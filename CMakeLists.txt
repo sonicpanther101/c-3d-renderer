@@ -11,19 +11,20 @@ macro(print_all_variables)
     message(STATUS "print_all_variables------------------------------------------}")
 endmacro()
 
-file(GLOB MAIN
-    "src/main.cpp"
-)
+file(GLOB SOURCES "src/*.cpp" "src/*.h")
 
-include_directories("vendor/glew/include")
-include_directories("vendor/glfw/include")
+find_package(OpenGL REQUIRED)
 
 # GLFW
 add_subdirectory("vendor/glfw")
 
-add_executable(executable ${MAIN})
+# GLEW
+add_subdirectory("vendor/glew-cmake/build/cmake")
+include_directories("vendor/glew-cmake/include")
+
+add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Link the engine
-target_link_libraries(executable glew glfw)
+target_link_libraries(${PROJECT_NAME} ${OPEN_GL_LIBRARIES} glew glfw)
 
 # print_all_variables()
