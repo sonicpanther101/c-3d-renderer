@@ -11,7 +11,7 @@ macro(print_all_variables)
     message(STATUS "print_all_variables------------------------------------------}")
 endmacro()
 
-file(GLOB SOURCES "src/*.cpp" "src/*.h")
+file(GLOB SOURCES "src/*.cpp" "src/*.h" "src/shaders/*.glsl")
 
 find_package(OpenGL REQUIRED)
 
