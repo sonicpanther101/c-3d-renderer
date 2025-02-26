@@ -11,7 +11,7 @@ macro(print_all_variables)
     message(STATUS "print_all_variables------------------------------------------}")
 endmacro()
 
-file(GLOB SOURCES "src/*.cpp" "src/*.h" "src/shaders/*.glsl")
+file(GLOB SOURCES "src/*.cpp" "src/*.h")
 
 find_package(OpenGL REQUIRED)
 
@@ -26,6 +26,10 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Link the engine
 target_link_libraries(${PROJECT_NAME} ${OPEN_GL_LIBRARIES} glew glfw)
+
+# Link the headers
+target_include_directories(${PROJECT_NAME} PUBLIC)
+
 
 # print_all_variables()
 
