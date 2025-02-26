@@ -37,7 +37,7 @@ int main()
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // glad: load all OpenGL function pointers
+    // glew: load all OpenGL function pointers
     // ---------------------------------------
     GLenum err = glewInit();
 	if (err != GLEW_OK) {
