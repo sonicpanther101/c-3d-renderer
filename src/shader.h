@@ -26,7 +26,6 @@ public:
         fShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
         try  {
             // open files
-            std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
             vShaderFile.open(vertexPath);
             fShaderFile.open(fragmentPath);
             std::stringstream vShaderStream, fShaderStream;
