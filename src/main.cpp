@@ -1,6 +1,11 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+// GLM
+#include "../vendor/glm/glm/glm.hpp"
+#include "../vendor/glm/glm/gtc/matrix_transform.hpp"
+#include "../vendor/glm/glm/gtc/type_ptr.hpp"
+
 #include "shader.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -17,6 +22,7 @@ const unsigned int SCR_HEIGHT = 600;
 float mixer = 0.2;
 
 int main() {
+
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -54,8 +60,8 @@ int main() {
     // ------------------------------------------------------------------
     float vertices[] = {
         // positions          // colors           // texture coords
-         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+        0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+        0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
         -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
         -0.5f,  0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
     };
@@ -140,15 +146,22 @@ int main() {
         // input
         // -----
         processInput(window);
-
+        
         // render
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
+        
         // render the triangle
         ourShader.use();
         ourShader.setFloat("mixer", mixer);
+        
+        glm::mat4 trans = glm::mat4(1.0f);
+        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+        trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+        
+        unsigned int transformLoc = glGetUniformLocation(ourShader.ID, "transform");
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
         float timeValue = glfwGetTime();
         float sinWave = (sin(timeValue*30) / 2.0f);
