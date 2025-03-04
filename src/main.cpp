@@ -189,6 +189,8 @@ int main() {
     ourShader.setInt("texture1", 0);
     ourShader.setInt("texture2", 1);
 
+    glfwSwapInterval(0);
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)) {
