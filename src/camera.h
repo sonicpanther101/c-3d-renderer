@@ -12,7 +12,9 @@ enum Camera_Movement {
     FORWARD,
     BACKWARD,
     LEFT,
-    RIGHT
+    RIGHT,
+    UP,
+    DOWN
 };
 
 // Default camera values
@@ -63,6 +65,7 @@ public:
     // returns the view matrix calculated using Euler Angles and the LookAt Matrix
     glm::mat4 GetViewMatrix()
     {
+
         return glm::lookAt(Position, Position + Front, Up);
     }
 
@@ -78,6 +81,10 @@ public:
             Position -= Right * glm::vec3(1,0,1) * velocity;
         if (direction == RIGHT)
             Position += Right * glm::vec3(1,0,1) * velocity;
+        if (direction == UP)
+            Position += glm::vec3(0,1,0) * velocity;
+        if (direction == DOWN)
+            Position -= glm::vec3(0,1,0) * velocity;
     }
 
     // processes input received from a mouse input system. Expects the offset value in both the x and y direction.
