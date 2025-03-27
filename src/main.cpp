@@ -266,25 +266,25 @@ int main() {
         lightingShader.setMat4("view", view);
 
         // world transformation
-        // for(unsigned int i = 0; i < 10; i++) {
+        for(unsigned int i = 0; i < 10; i++) {
             glm::mat4 model = glm::mat4(1.0f);
-            // float angle = 20.0f * (i+1); 
-            model = glm::translate(model, cubePositions[0]);
-            // model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            float angle = 20.0f * (i+1); 
+            model = glm::translate(model, cubePositions[i]);
+            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             // model = glm::rotate(model, (float)glfwGetTime() * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             lightingShader.setMat4("model", model);
             
             // render the cube
             glBindVertexArray(cubeVAO);
             glDrawArrays(GL_TRIANGLES, 0, 36);
-        // }
+        }
 
         // also draw the lamp object
 
         lightCubeShader.use();
         lightCubeShader.setMat4("projection", projection);
         lightCubeShader.setMat4("view", view);
-        model = glm::mat4(1.0f);
+        glm::mat4 model = glm::mat4(1.0f);
         lightPos.x = 5*sin(glfwGetTime());
         lightPos.z = 5*cos(glfwGetTime());
         model = glm::translate(model, lightPos);
