@@ -285,6 +285,7 @@ int main() {
         lightCubeShader.setMat4("projection", projection);
         lightCubeShader.setMat4("view", view);
         glm::mat4 model = glm::mat4(1.0f);
+        // lightPos = camera.Position;
         lightPos.x = 5*sin(glfwGetTime());
         lightPos.z = 5*cos(glfwGetTime());
         model = glm::translate(model, lightPos);
