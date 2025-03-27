@@ -34,7 +34,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 // lighting
-glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+glm::vec3 lightPos(5.0f, 0.0f, 0.0f);
 
 int main() {
 
@@ -155,7 +155,7 @@ int main() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
     // normal attribute
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
     glEnableVertexAttribArray(2);
 
     // load and create a texture 
@@ -266,25 +266,27 @@ int main() {
         lightingShader.setMat4("view", view);
 
         // world transformation
-        for(unsigned int i = 0; i < 10; i++) {
+        // for(unsigned int i = 0; i < 10; i++) {
             glm::mat4 model = glm::mat4(1.0f);
-            float angle = 20.0f * (i+1); 
-            model = glm::translate(model, cubePositions[i]);
+            // float angle = 20.0f * (i+1); 
+            model = glm::translate(model, cubePositions[0]);
             // model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            model = glm::rotate(model, (float)glfwGetTime() * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            // model = glm::rotate(model, (float)glfwGetTime() * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             lightingShader.setMat4("model", model);
             
             // render the cube
             glBindVertexArray(cubeVAO);
             glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+        // }
 
         // also draw the lamp object
 
         lightCubeShader.use();
         lightCubeShader.setMat4("projection", projection);
         lightCubeShader.setMat4("view", view);
-        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::mat4(1.0f);
+        lightPos.x = 5*sin(glfwGetTime());
+        lightPos.z = 5*cos(glfwGetTime());
         model = glm::translate(model, lightPos);
         model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
         lightCubeShader.setMat4("model", model);
