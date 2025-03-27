@@ -18,10 +18,14 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
+glm::vec3 hueToRGB(float hue);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+
+bool mouseEnabled = false;
+bool CPressed = false;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -254,10 +258,7 @@ int main() {
 
         // be sure to activate shader when setting uniforms/drawing objects
         lightingShader.use();
-        lightingShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
-        lightingShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
         lightingShader.setVec3("lightPos", lightPos);
-        lightingShader.setVec3("viewPos", camera.Position);
 
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -265,13 +266,29 @@ int main() {
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
 
+        // material properties
+        lightingShader.setVec3("material.ambient", 0.0f, 0.05f, 0.05f);
+        lightingShader.setVec3("material.diffuse", 0.4f, 0.5f, 0.5f);
+        lightingShader.setVec3("material.specular", 0.04f, 0.7f, 0.7f);
+        lightingShader.setFloat("material.shininess", 0.078125f * 128);
+
+        // light properties
+         glm::vec3 lightColor = hueToRGB((float)glfwGetTime()/25);
+        
+        glm::vec3 diffuseColor = lightColor   * glm::vec3(0.5f); 
+        glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f); 
+        
+        lightingShader.setVec3("light.ambient", ambientColor);
+        lightingShader.setVec3("light.diffuse", diffuseColor);
+        lightingShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
+
         // world transformation
         for(unsigned int i = 0; i < 10; i++) {
             glm::mat4 model = glm::mat4(1.0f);
             float angle = 20.0f * (i+1); 
             model = glm::translate(model, cubePositions[i]);
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            // model = glm::rotate(model, (float)glfwGetTime() * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            // model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            model = glm::rotate(model, (float)glfwGetTime() * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             lightingShader.setMat4("model", model);
             
             // render the cube
@@ -291,6 +308,7 @@ int main() {
         model = glm::translate(model, lightPos);
         model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
         lightCubeShader.setMat4("model", model);
+        lightCubeShader.setVec3("lightColor", lightColor);
 
         glBindVertexArray(lightCubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -332,6 +350,15 @@ void processInput(GLFWwindow *window) {
         camera.ProcessKeyboard(UP, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         camera.ProcessKeyboard(DOWN, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
+        if (!CPressed) {
+            glfwSetInputMode(window, GLFW_CURSOR, (mouseEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
+            mouseEnabled = !mouseEnabled;
+        }
+        CPressed = true;
+    } else {
+        CPressed = false;
+    }
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -368,4 +395,22 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 // ----------------------------------------------------------------------
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     camera.ProcessMouseScroll(static_cast<float>(yoffset));
+}
+
+float min3(float a, float b, float c) {
+    return std::min(a, std::min(b, c));
+}
+
+glm::vec3 hueToRGB(float hue) {
+    float r, g, b, kr, kg, kb;
+
+    kr = glm::mod((5 + hue * 6.0f), 6.0f);
+    kg = glm::mod((3 + hue * 6.0f), 6.0f);
+    kb = glm::mod((1 + hue * 6.0f), 6.0f);
+
+    r = 1 - std::max(min3(kr, 4.0f-kr, 1.0f), 0.0f);
+    g = 1 - std::max(min3(kg, 4.0f-kg, 1.0f), 0.0f);
+    b = 1 - std::max(min3(kb, 4.0f-kb, 1.0f), 0.0f);
+
+    return glm::vec3(r, g, b);
 }
