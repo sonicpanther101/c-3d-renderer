@@ -29,7 +29,7 @@ bool mouseEnabled = false;
 bool CPressed = false;
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 5.0f, 0.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -39,7 +39,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 // lighting
-glm::vec3 lightPos(5.0f, 0.0f, 0.0f);
+glm::vec3 lightPos(0.0f, 5.0f, 0.0f);
 
 int main() {
 
@@ -211,7 +211,7 @@ int main() {
         // be sure to activate shader when setting uniforms/drawing objects
         lightingShader.use();
         lightingShader.setVec3("light.position", lightPos);
-        // lightingShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f); 
+        // lightingShader.setVec4("light.vector", -0.2f, -1.0f, -0.3f, 0.0f); 
         lightingShader.setFloat("time", static_cast<float>(glfwGetTime()));
 
         // view/projection transformations
@@ -229,13 +229,17 @@ int main() {
         lightingShader.setVec3("light.diffuse", 0.5f, 0.5f, 0.5f);
         lightingShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
 
+        lightingShader.setFloat("light.constant",  1.0f);
+        lightingShader.setFloat("light.linear",    0.09f);
+        lightingShader.setFloat("light.quadratic", 0.032f);
+
         // world transformation
         for(unsigned int i = 0; i < 10; i++) {
             glm::mat4 model = glm::mat4(1.0f);
             float angle = 20.0f * (i+1); 
             model = glm::translate(model, cubePositions[i]);
-            // model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            model = glm::rotate(model, (float)glfwGetTime() * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            // model = glm::rotate(model, (float)glfwGetTime() * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             lightingShader.setMat4("model", model);
 
             // bind diffuse map
@@ -328,22 +332,26 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 // glfw: whenever the mouse moves, this callback is called
 // -------------------------------------------------------
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
-
-    if (firstMouse) {
+    if (mouseEnabled) {
+        return;
+    } else {
+        float xpos = static_cast<float>(xposIn);
+        float ypos = static_cast<float>(yposIn);
+    
+        if (firstMouse) {
+            lastX = xpos;
+            lastY = ypos;
+            firstMouse = false;
+        }
+    
+        float xoffset = xpos - lastX;
+        float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    
         lastX = xpos;
         lastY = ypos;
-        firstMouse = false;
+    
+        camera.ProcessMouseMovement(xoffset, yoffset);
     }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-
-    lastX = xpos;
-    lastY = ypos;
-
-    camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
