@@ -22,10 +22,13 @@ add_subdirectory("vendor/glfw")
 add_subdirectory("vendor/glew-cmake/build/cmake")
 include_directories("vendor/glew-cmake/include")
 
+# Assimp
+add_subdirectory("vendor/assimp")
+
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Link the engine
-target_link_libraries(${PROJECT_NAME} ${OPEN_GL_LIBRARIES} glew glfw)
+target_link_libraries(${PROJECT_NAME} ${OPEN_GL_LIBRARIES} glew glfw assimp)
 
 # Link the headers
 target_include_directories(${PROJECT_NAME} PUBLIC)

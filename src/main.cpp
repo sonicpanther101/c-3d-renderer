@@ -6,6 +6,9 @@
 #include "../vendor/glm/glm/gtc/matrix_transform.hpp"
 #include "../vendor/glm/glm/gtc/type_ptr.hpp"
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+
 #include "shader.h"
 #include "camera.h"
 
