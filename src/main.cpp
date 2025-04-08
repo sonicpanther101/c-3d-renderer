@@ -95,6 +95,13 @@ int main() {
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
 
+    // render 1 frame to stop flashbang startup
+    processInput(window);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+
     // build and compile our shader program
     // ------------------------------------
     Shader lightingShader("../src/shaders/vertex.glsl", "../src/shaders/fragment.glsl");
@@ -120,11 +127,13 @@ int main() {
     //     lightingShader.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.032f);
     // }
 
+    lightingShader.use();
+
     // spotlight
     lightingShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
     lightingShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
 
-    lightingShader.setVec3("spotLight.ambient", 1.0f, 1.0f, 1.0f);
+    lightingShader.setVec3("spotLight.ambient", 0.1f, 0.1f, 0.1f);
     lightingShader.setVec3("spotLight.diffuse", 0.8f, 0.8f, 0.8f);
     lightingShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
 
@@ -133,10 +142,10 @@ int main() {
     lightingShader.setFloat("spotLight.quadratic", 0.032f);
 
     // directional light
-    lightingShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-    lightingShader.setVec3("dirLight.ambient", 0.1f, 0.1f, 0.1f);
-    lightingShader.setVec3("dirLight.diffuse", 0.5f, 0.5f, 0.5f);
-    lightingShader.setVec3("dirLight.specular", 0.8f, 0.8f, 0.8f);
+    // lightingShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
+    // lightingShader.setVec3("dirLight.ambient", 0.1f, 0.1f, 0.1f);
+    // lightingShader.setVec3("dirLight.diffuse", 0.5f, 0.5f, 0.5f);
+    // lightingShader.setVec3("dirLight.specular", 0.8f, 0.8f, 0.8f);
 
     // for testing
     // material properties
@@ -153,11 +162,12 @@ int main() {
     // glEnableVertexAttribArray(0);
 
     // draw in wireframe
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 
     // render loop
     // -----------
+
     while (!glfwWindowShouldClose(window)) {
 
         // per-frame time logic
