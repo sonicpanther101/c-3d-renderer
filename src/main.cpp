@@ -12,6 +12,7 @@
 #include "shader.h"
 #include "camera.h"
 #include "model.h"
+#include "physics.h"
 
 // #define STB_IMAGE_IMPLEMENTATION
 // #include "stb_image.h"
@@ -88,9 +89,6 @@ int main() {
         return -1;
 	}
 
-    // tell stb_image.h to flip loaded texture's on the y-axis (before loading model).
-    stbi_set_flip_vertically_on_load(true);
-
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
@@ -106,10 +104,6 @@ int main() {
     // ------------------------------------
     Shader lightingShader("../src/shaders/vertex.glsl", "../src/shaders/fragment.glsl");
     // Shader lightCubeShader("../src/shaders/vertex.glsl", "../src/shaders/lightfrag.glsl");
-
-    // load models
-    // -----------
-    Model ourModel("../resources/objects/backpack/backpack.obj");
 
     // light properties
 
@@ -175,6 +169,7 @@ int main() {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        // std::cout << 1/deltaTime << std::endl; // fps console log
 
         // input
         // -----
@@ -211,7 +206,6 @@ int main() {
         model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
         model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
         lightingShader.setMat4("model", model);
-        ourModel.Draw(lightingShader);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
