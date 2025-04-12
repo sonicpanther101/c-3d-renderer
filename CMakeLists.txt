@@ -25,14 +25,10 @@ include_directories("vendor/glew-cmake/include")
 # Assimp
 add_subdirectory("vendor/assimp")
 
-# range-v3
-add_subdirectory("vendor/range-v3")
-include_directories("vendor/range-v3/inlude")
-
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Link the engine
-target_link_libraries(${PROJECT_NAME} ${OPEN_GL_LIBRARIES} glew glfw assimp range-v3)
+target_link_libraries(${PROJECT_NAME} ${OPEN_GL_LIBRARIES} glew glfw assimp)
 
 # Link the headers
 target_include_directories(${PROJECT_NAME} PUBLIC)

@@ -1,5 +1,4 @@
-#ifndef CAMERA_H
-#define CAMERA_H
+#pragma once
 
 #include <GL/glew.h>
 #include <iostream>
@@ -138,4 +137,3 @@ private:
         Up    = glm::normalize(glm::cross(Right, Direction));
     }
 };
-#endif

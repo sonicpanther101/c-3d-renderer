@@ -1,9 +1,7 @@
-#ifndef PHYSICS_H
-#define PHYSICS_H
+#pragma once
 
 #include "../vendor/glm/glm/glm.hpp"
 #include "../vendor/glm/glm/gtc/matrix_transform.hpp"
-#include <range/v3/all.hpp>
 #include <vector>
 #include <algorithm>
 #include <iostream>
@@ -17,6 +15,12 @@ public:
     std::vector<float> PS;
     std::vector<float> PM;
     float dT;
+
+    struct Data {
+        glm::vec3 pos;
+        glm::vec3 vel;
+        glm::vec3 acc;
+    }
 
     PhysicsSystem(std::vector<glm::vec3> &particalPositions, std::vector<glm::vec3> &lastParticalPositions, std::vector<float> &particalMasses, std::vector<float> &particalSizes) {
         if (particalPositions.size() != lastParticalPositions.size() || particalPositions.size() != particalSizes.size() || particalPositions.size() != particalMasses.size())
@@ -65,11 +69,12 @@ private:
             }
         );
 
-        auto zip = ranges::views::zip(this->PP, velocity, acceleration);
+        vector<Data> data = { this->PP, velocity, acceleration };
+
         std::transform(
-            zip.begin(), zip.end(),
-            std::back_inserter(this->PP),
-            [](const auto &tup) {
+            data.begin(), data.end(),
+            this->PP.begin(),
+            [](const ) {
                 const auto &pos = std::get<0>(tup);
                 const auto &vel = std::get<1>(tup);
                 const auto &acc = std::get<2>(tup);
@@ -78,5 +83,3 @@ private:
         );
     }
 };
-
-#endif
