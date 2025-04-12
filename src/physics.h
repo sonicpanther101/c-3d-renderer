@@ -11,25 +11,22 @@
 class PhysicsSystem {
 public:
 
-    std::vector<glm::vec3> PP;
-    std::vector<glm::vec3> LPP;
-    std::vector<glm::vec3> Forces;
-    std::vector<float> PS;
-    std::vector<float> PM;
-    float dT;
-
-    PhysicsSystem(std::vector<glm::vec3> &particalPositions, std::vector<glm::vec3> &lastParticalPositions, std::vector<float> &particalMasses, std::vector<float> &particalSizes) {
-        if (particalPositions.size() != lastParticalPositions.size() || particalPositions.size() != particalSizes.size() || particalPositions.size() != particalMasses.size())
-            std::cout << "they don't match buddy" << std::endl;
-        this->PP  = particalPositions;
-        this->LPP = lastParticalPositions;
-        this->PM  = particalMasses;
-        this->PS  = particalSizes;
-        this->Forces = std::vector<glm::vec3>(PP.size(), glm::vec3(0.0f));
+    struct Particle {
+        glm::vec3 position;
+        glm::vec3 lastPosition = position;
+        glm::vec3 force = glm::vec3(0.0f, 0.0f, 0.0f);
+        float mass = 1.0f;
+        float radius = 1.0f;
+    };
+    float m_dT;
+    std::vector<Particle> m_Particles;
+    
+    PhysicsSystem(std::vector<Particle> &particles) {
+        m_Particles = particles;
     }
 
     void Step(float &dT) {
-        this->dT = dT;
+        m_dT = dT;
         // collisions()
         forces();
         move();
@@ -37,7 +34,9 @@ public:
 private:
 
     void forces() {
-        this->Forces = std::vector<glm::vec3>(PP.size(), glm::vec3(0.0f));
+        for (Particle &particle : m_Particles) {
+            particle.force = glm::vec3(0.0f, 0.0f, 0.0f);
+        }
     }
 
     void move() {
