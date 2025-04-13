@@ -13,7 +13,10 @@ public:
         glm::vec3 position;
         glm::vec3 lastPosition = position;
         glm::vec3 force = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::vec3 velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::vec3 acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
         float mass = 1.0f;
+        float inverseMass = 1.0f / mass;
         float radius = 1.0f;
     };
     float m_dT;
@@ -38,40 +41,11 @@ private:
     }
 
     void move() {
-        std::vector<glm::vec3> velocity(this->PP.size());
-
-        std::transform(
-            this->PP.begin(), this->PP.end(),
-            this->LPP.begin(),
-            velocity.begin(),
-            [](const glm::vec3 &pp, const glm::vec3 &lpp) {
-                return pp - lpp; // Subtract element-wise
-            }
-        );
-
-        this->LPP = this->PP;
-
-        std::vector<glm::vec3> acceleration(this->PP.size());
-
-        std::transform(
-            this->Forces.begin(), this->Forces.end(),
-            this->PM.begin(),
-            acceleration.begin(),
-            [this](const glm::vec3 &pf, const float &pm) {
-                return (pf / pm) * (this->dT * this->dT);
-            }
-        );
-
-        auto zip = ranges::views::zip(this->PP, velocity, acceleration);
-        std::transform(
-            zip.begin(), zip.end(),
-            std::back_inserter(this->PP),
-            [](const auto &tup) {
-                const auto &pos = std::get<0>(tup);
-                const auto &vel = std::get<1>(tup);
-                const auto &acc = std::get<2>(tup);
-                return pos + vel + acc;
-            }
-        );
+        for (Particle &particle : m_Particles) {
+	        particle.velocity = particle.position - lastPosition;
+	        particle.lastPosition = particle.position;
+	        particle.acceleration = particle.force * particle.inverseMass * m_dT * m_dT;
+	        particle.position += particle.velocity + particle.acceleration;
+        }
     }
 }
