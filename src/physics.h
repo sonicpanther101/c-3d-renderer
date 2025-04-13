@@ -1,5 +1,4 @@
-#ifndef PHYSICS_H
-#define PHYSICS_H
+#pragma once
 
 #include "../vendor/glm/glm/glm.hpp"
 #include "../vendor/glm/glm/gtc/matrix_transform.hpp"
@@ -75,6 +74,4 @@ private:
             }
         );
     }
-};
-
-#endif
+}

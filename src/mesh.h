@@ -1,5 +1,4 @@
-#ifndef MESH_H
-#define MESH_H
+#pragma once
 
 #include <GL/glew.h> // holds all OpenGL type declarations
 
@@ -140,4 +139,3 @@ private:
         glBindVertexArray(0);
     }
 };
-#endif
