@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <chrono>
 
 class PhysicsSystem {
 public:
@@ -18,16 +19,31 @@ public:
         float inverseMass = 1.0f / mass;
         float radius = 1.0f;
     };
+    std::chrono::high_resolution_clock::time_point m_LastTime = std::chrono::high_resolution_clock::now();
     float m_dT;
     std::vector<Particle> m_Particles;
+    bool m_Running = true;
     
     PhysicsSystem(std::vector<Particle> &particles) {
         m_Particles = particles;
     }
+    
+    void Start() {
+	    while (m_Running) {
+		    Step();
+	    }
+    }
+    
+    void Stop() {
+	    m_Running = false;
+    }
 
-    void Step(float &dT) {
-        m_dT = dT;
-        // collisions()
+    void Step() {
+	    std::chrono::high_resolution_clock::time_point current = std::chrono::high_resolution_clock::now();
+	    std::chrono::duration<float, std::milli> diff = current - m_LastTime;
+        m_dT = diff.count();
+        m_LastTime = current;
+        // collisions();
         forces();
         move();
     }

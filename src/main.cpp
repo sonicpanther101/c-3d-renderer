@@ -14,10 +14,8 @@
 #include "model.h"
 #include "physics.h"
 
-// #define STB_IMAGE_IMPLEMENTATION
-// #include "stb_image.h"
-
 #include <iostream>
+#include <vector>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -99,6 +97,18 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glfwSwapBuffers(window);
     glfwPollEvents();
+    
+    PhysicsSystem::Particle test;
+    test.position = glm::vec3(1.0f);
+    
+    std::vector<PhysicsSystem::Particle> objects;
+    objects.push_back(test);
+    test.position = glm::vec3(0.0f);
+    objects.push_back(test);
+    test.position = glm::vec3(-1.0f);
+    objects.push_back(test);
+    
+    PhysicsSystem system(objects);
 
     // build and compile our shader program
     // ------------------------------------
@@ -158,7 +168,8 @@ int main() {
     // draw in wireframe
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-
+	system.Start();
+	
     // render loop
     // -----------
 
@@ -216,6 +227,7 @@ int main() {
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
     glfwTerminate();
+    system.Stop();
     return 0;
 }
 
