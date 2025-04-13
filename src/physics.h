@@ -2,7 +2,6 @@
 
 #include "../vendor/glm/glm/glm.hpp"
 #include "../vendor/glm/glm/gtc/matrix_transform.hpp"
-#include <range/v3/all.hpp>
 #include <vector>
 #include <algorithm>
 #include <iostream>
