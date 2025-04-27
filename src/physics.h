@@ -5,81 +5,62 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <chrono>
 
 class PhysicsSystem {
 public:
-
-    std::vector<glm::vec3> PP;
-    std::vector<glm::vec3> LPP;
-    std::vector<glm::vec3> Forces;
-    std::vector<float> PS;
-    std::vector<float> PM;
-    float dT;
-
-    struct Data {
-        glm::vec3 pos;
-        glm::vec3 vel;
-        glm::vec3 acc;
+    struct Particle {
+        glm::vec3 position;
+        glm::vec3 lastPosition = position;
+        glm::vec3 force = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::vec3 velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::vec3 acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
+        float mass = 1.0f;
+        float inverseMass = 1.0f / mass;
+        float radius = 1.0f;
+    };
+    std::chrono::high_resolution_clock::time_point m_LastTime = std::chrono::high_resolution_clock::now();
+    float m_dT;
+    std::vector<Particle> m_Particles;
+    bool m_Running = true;
+    
+    PhysicsSystem(std::vector<Particle> &particles) {
+        m_Particles = particles;
+    }
+    
+    void Start() {
+	    while (m_Running) {
+		    Step();
+	    }
+    }
+    
+    void Stop() {
+	    m_Running = false;
     }
 
-    PhysicsSystem(std::vector<glm::vec3> &particalPositions, std::vector<glm::vec3> &lastParticalPositions, std::vector<float> &particalMasses, std::vector<float> &particalSizes) {
-        if (particalPositions.size() != lastParticalPositions.size() || particalPositions.size() != particalSizes.size() || particalPositions.size() != particalMasses.size())
-            std::cout << "they don't match buddy" << std::endl;
-        this->PP  = particalPositions;
-        this->LPP = lastParticalPositions;
-        this->PM  = particalMasses;
-        this->PS  = particalSizes;
-        this->Forces = std::vector<glm::vec3>(PP.size(), glm::vec3(0.0f));
-    }
-
-    void Step(float &dT) {
-        this->dT = dT;
-        // collisions()
+    void Step() {
+	    std::chrono::high_resolution_clock::time_point current = std::chrono::high_resolution_clock::now();
+	    std::chrono::duration<float, std::milli> diff = current - m_LastTime;
+        m_dT = diff.count();
+        m_LastTime = current;
+        // collisions();
         forces();
         move();
     }
 private:
 
     void forces() {
-        this->Forces = std::vector<glm::vec3>(PP.size(), glm::vec3(0.0f));
+        for (Particle &particle : m_Particles) {
+            particle.force = glm::vec3(0.0f, 0.0f, 0.0f);
+        }
     }
 
     void move() {
-        std::vector<glm::vec3> velocity(this->PP.size());
-
-        std::transform(
-            this->PP.begin(), this->PP.end(),
-            this->LPP.begin(),
-            velocity.begin(),
-            [](const glm::vec3 &pp, const glm::vec3 &lpp) {
-                return pp - lpp; // Subtract element-wise
-            }
-        );
-
-        this->LPP = this->PP;
-
-        std::vector<glm::vec3> acceleration(this->PP.size());
-
-        std::transform(
-            this->Forces.begin(), this->Forces.end(),
-            this->PM.begin(),
-            acceleration.begin(),
-            [this](const glm::vec3 &pf, const float &pm) {
-                return (pf / pm) * (this->dT * this->dT);
-            }
-        );
-
-        vector<Data> data = { this->PP, velocity, acceleration };
-
-        std::transform(
-            data.begin(), data.end(),
-            this->PP.begin(),
-            [](const ) {
-                const auto &pos = std::get<0>(tup);
-                const auto &vel = std::get<1>(tup);
-                const auto &acc = std::get<2>(tup);
-                return pos + vel + acc;
-            }
-        );
+        for (Particle &particle : m_Particles) {
+	        particle.velocity = particle.position - lastPosition;
+	        particle.lastPosition = particle.position;
+	        particle.acceleration = particle.force * particle.inverseMass * m_dT * m_dT;
+	        particle.position += particle.velocity + particle.acceleration;
+        }
     }
-};
+}
