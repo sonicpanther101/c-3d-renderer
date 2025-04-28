@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <vector>
+#include <random>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -113,18 +114,20 @@ int main() {
         0.5f,  0.5f,  1.0f, 1.0f
     };
     
-    PhysicsSystem::Particle test;
-    test.position = glm::vec3(1.0f);
-    test.lastPosition = glm::vec3(1.0f);
-    
+    PhysicsSystem::Particle test;    
     std::vector<PhysicsSystem::Particle> objects;
-    objects.push_back(test);
-    test.position = glm::vec3(0.0f);
-    test.lastPosition = glm::vec3(0.0f);
-    objects.push_back(test);
-    test.position = glm::vec3(-1.0f);
-    test.lastPosition = glm::vec3(-1.0f);
-    objects.push_back(test);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.0, 1.0);
+
+    glm::vec3 pos;
+    for (unsigned int i=0; i<10000; i++) {
+        pos = glm::vec3(dis(gen),dis(gen),dis(gen));
+        test.position = pos;
+        test.lastPosition = pos;
+        objects.push_back(test);
+    }
     
     PhysicsSystem system(objects);
 
@@ -204,7 +207,7 @@ int main() {
 
     // Instance buffer
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 1000, nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 10000 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
 
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
@@ -212,8 +215,8 @@ int main() {
 
     glBindVertexArray(0);
 
-    stbi_set_flip_vertically_on_load(true);
-    unsigned int texture = loadTexture("../resources/textures/awesomeface.png");
+    // stbi_set_flip_vertically_on_load(true);
+    unsigned int texture = loadTexture("../resources/textures/circle.png");
     lightingShader.setInt("particleTexture", 0);
 
 	system.Start();
@@ -232,16 +235,13 @@ int main() {
 
         std::vector<glm::vec3> positions;
         system.GetParticlePositions(positions);
-        // printVec3(positions[0]);
-        // printVec3(positions[1]);
-        // printVec3(positions[2]);
 
         std::vector<float> sizes;
         system.GetParticleSizes(sizes);
 
         // Update instance data
         glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-        glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(glm::vec3), positions.data(), GL_DYNAMIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
 
         // input
         // -----

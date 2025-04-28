@@ -25,9 +25,11 @@ public:
     std::chrono::high_resolution_clock::time_point m_LastTime = std::chrono::high_resolution_clock::now();
     float m_dT;
     std::vector<Particle> m_Particles;
+    std::vector<Particle> m_RenderParticles;
     std::atomic<bool> m_Running{false};
     std::thread m_SimulationThread;
     std::mutex m_ParticlesMutex;
+
     
     PhysicsSystem(std::vector<Particle> &particles) : m_Particles(particles) {}
 
@@ -51,8 +53,6 @@ public:
     }
 
     void Step() {
-        std::lock_guard<std::mutex> lock(m_ParticlesMutex);
-
 	    std::chrono::high_resolution_clock::time_point current = std::chrono::high_resolution_clock::now();
 	    std::chrono::duration<float, std::milli> diff = current - m_LastTime;
         m_dT = diff.count();
@@ -60,13 +60,16 @@ public:
         // collisions();
         forces();
         move();
+
+        std::lock_guard<std::mutex> lock(m_ParticlesMutex);
+        m_RenderParticles = m_Particles;
     }
 
     void GetParticlePositions(std::vector<glm::vec3>& positions) {
         std::lock_guard<std::mutex> lock(m_ParticlesMutex);
         positions.clear();
-        positions.reserve(m_Particles.size());
-        for (const auto& particle : m_Particles) {
+        positions.reserve(m_RenderParticles.size());
+        for (const auto& particle : m_RenderParticles) {
             positions.push_back(particle.position);
         }
     }
@@ -74,8 +77,8 @@ public:
     void GetParticleSizes(std::vector<float>& sizes) {
         std::lock_guard<std::mutex> lock(m_ParticlesMutex);
         sizes.clear();
-        sizes.reserve(m_Particles.size());
-        for (const auto& particle : m_Particles) {
+        sizes.reserve(m_RenderParticles.size());
+        for (const auto& particle : m_RenderParticles) {
             sizes.push_back(particle.radius);
         }
     }
@@ -84,6 +87,7 @@ private:
     void RunSimulationLoop() {
         while (m_Running) {
             Step();
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
     }
 
