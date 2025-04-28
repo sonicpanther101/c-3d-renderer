@@ -23,6 +23,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 glm::vec3 hueToRGB(float hue);
 unsigned int loadTexture(char const * path);
+void printVec3(const glm::vec3& v);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -97,15 +98,32 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glfwSwapBuffers(window);
     glfwPollEvents();
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    unsigned int billboardVAO, billboardVBO, instanceVBO;
+    const float quadVertices[] = {
+        // Positions  // TexCoords
+        -0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.0f, 0.0f,
+        0.5f, -0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.0f, 1.0f,
+        0.5f, -0.5f,  1.0f, 0.0f,
+        0.5f,  0.5f,  1.0f, 1.0f
+    };
     
     PhysicsSystem::Particle test;
     test.position = glm::vec3(1.0f);
+    test.lastPosition = glm::vec3(1.0f);
     
     std::vector<PhysicsSystem::Particle> objects;
     objects.push_back(test);
     test.position = glm::vec3(0.0f);
+    test.lastPosition = glm::vec3(0.0f);
     objects.push_back(test);
     test.position = glm::vec3(-1.0f);
+    test.lastPosition = glm::vec3(-1.0f);
     objects.push_back(test);
     
     PhysicsSystem system(objects);
@@ -168,6 +186,36 @@ int main() {
     // draw in wireframe
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+    glGenVertexArrays(1, &billboardVAO);
+    glGenBuffers(1, &billboardVBO);
+    glGenBuffers(1, &instanceVBO);
+
+    glBindVertexArray(billboardVAO);
+
+    // Vertex buffer
+    glBindBuffer(GL_ARRAY_BUFFER, billboardVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+
+    // Vertex attributes
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+    // Instance buffer
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 1000, nullptr, GL_DYNAMIC_DRAW);
+
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glVertexAttribDivisor(2, 1);  // Update once per instance
+
+    glBindVertexArray(0);
+
+    stbi_set_flip_vertically_on_load(true);
+    unsigned int texture = loadTexture("../resources/textures/awesomeface.png");
+    lightingShader.setInt("particleTexture", 0);
+
 	system.Start();
 	
     // render loop
@@ -181,6 +229,19 @@ int main() {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         // std::cout << 1/deltaTime << std::endl; // fps console log
+
+        std::vector<glm::vec3> positions;
+        system.GetParticlePositions(positions);
+        // printVec3(positions[0]);
+        // printVec3(positions[1]);
+        // printVec3(positions[2]);
+
+        std::vector<float> sizes;
+        system.GetParticleSizes(sizes);
+
+        // Update instance data
+        glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+        glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(glm::vec3), positions.data(), GL_DYNAMIC_DRAW);
 
         // input
         // -----
@@ -197,6 +258,7 @@ int main() {
         // flashlight
         lightingShader.setVec3("spotLight.position",  camera.Position);
         lightingShader.setVec3("spotLight.direction", camera.Direction);
+
         lightingShader.setVec3("viewPos", camera.Position);
         lightingShader.setFloat("time", static_cast<float>(glfwGetTime()));
 
@@ -204,7 +266,6 @@ int main() {
         // for (unsigned int i = 0; i < 4; i++) {
         //     lightingShader.setVec3("pointLights[" + std::to_string(i) + "].position", pointLightPositions[i]);
         // }
-
 
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -217,6 +278,15 @@ int main() {
         model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
         model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
         lightingShader.setMat4("model", model);
+
+        // Billboard-specific uniforms
+        lightingShader.setVec3("cameraRight", camera.Right);
+        lightingShader.setVec3("cameraUp", camera.Up);
+        lightingShader.setFloat("billboardScale", 0.2f);
+
+        // Draw billboards
+        glBindVertexArray(billboardVAO);
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, positions.size());
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -352,4 +422,8 @@ unsigned int loadTexture(char const * path) {
     }
 
     return textureID;
+}
+
+void printVec3(const glm::vec3& v) {
+    std::cout << "(" << v.x << ", " << v.y << ", " << v.z << ")" << std::endl;
 }

@@ -6,6 +6,9 @@
 #include <algorithm>
 #include <iostream>
 #include <chrono>
+#include <thread>
+#include <atomic>
+#include <mutex>
 
 class PhysicsSystem {
 public:
@@ -22,23 +25,34 @@ public:
     std::chrono::high_resolution_clock::time_point m_LastTime = std::chrono::high_resolution_clock::now();
     float m_dT;
     std::vector<Particle> m_Particles;
-    bool m_Running = true;
+    std::atomic<bool> m_Running{false};
+    std::thread m_SimulationThread;
+    std::mutex m_ParticlesMutex;
     
-    PhysicsSystem(std::vector<Particle> &particles) {
-        m_Particles = particles;
+    PhysicsSystem(std::vector<Particle> &particles) : m_Particles(particles) {}
+
+    ~PhysicsSystem() {
+        Stop();
     }
     
     void Start() {
-	    while (m_Running) {
-		    Step();
-	    }
+        if (m_SimulationThread.joinable()) {
+            return; // Avoid restarting if already running
+        }
+        m_Running = true;
+        m_SimulationThread = std::thread(&PhysicsSystem::RunSimulationLoop, this);
     }
     
     void Stop() {
-	    m_Running = false;
+        m_Running = false;
+        if (m_SimulationThread.joinable()) {
+            m_SimulationThread.join();
+        }
     }
 
     void Step() {
+        std::lock_guard<std::mutex> lock(m_ParticlesMutex);
+
 	    std::chrono::high_resolution_clock::time_point current = std::chrono::high_resolution_clock::now();
 	    std::chrono::duration<float, std::milli> diff = current - m_LastTime;
         m_dT = diff.count();
@@ -47,7 +61,31 @@ public:
         forces();
         move();
     }
+
+    void GetParticlePositions(std::vector<glm::vec3>& positions) {
+        std::lock_guard<std::mutex> lock(m_ParticlesMutex);
+        positions.clear();
+        positions.reserve(m_Particles.size());
+        for (const auto& particle : m_Particles) {
+            positions.push_back(particle.position);
+        }
+    }
+
+    void GetParticleSizes(std::vector<float>& sizes) {
+        std::lock_guard<std::mutex> lock(m_ParticlesMutex);
+        sizes.clear();
+        sizes.reserve(m_Particles.size());
+        for (const auto& particle : m_Particles) {
+            sizes.push_back(particle.radius);
+        }
+    }
 private:
+
+    void RunSimulationLoop() {
+        while (m_Running) {
+            Step();
+        }
+    }
 
     void forces() {
         for (Particle &particle : m_Particles) {
@@ -57,10 +95,10 @@ private:
 
     void move() {
         for (Particle &particle : m_Particles) {
-	        particle.velocity = particle.position - lastPosition;
+	        particle.velocity = particle.position - particle.lastPosition;
 	        particle.lastPosition = particle.position;
 	        particle.acceleration = particle.force * particle.inverseMass * m_dT * m_dT;
 	        particle.position += particle.velocity + particle.acceleration;
         }
     }
-}
+};
