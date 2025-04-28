@@ -117,29 +117,38 @@ int main() {
     PhysicsSystem::Particle test;    
     std::vector<PhysicsSystem::Particle> objects;
 
-    // std::random_device rd;
-    // std::mt19937 gen(rd());
-    // std::uniform_real_distribution<> dis(0.0, 1.0);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.0, 1.0);
 
-    // glm::vec3 pos;
-    // glm::vec3 vel = glm::vec3(0.0f, 0.0f, 0.0f) * 1.0f/240.0f;
+    glm::vec3 pos;
+    glm::vec3 vel = glm::vec3(0.0f, 0.0f, 0.0f) * 1.0f/240.0f;
     // for (unsigned int i=0; i<100; i++) {
     //     pos = glm::vec3(dis(gen),dis(gen),dis(gen));
     //     test.position = pos;
     //     test.lastPosition = pos + vel;
     //     objects.push_back(test);
     // }
-    test.position = glm::vec3(0.0f);
-    test.lastPosition = glm::vec3(0.0f);
-    test.mass = 1.989e30f;
-    test.inverseMass = 1.0f / test.mass;
+
+    test.position = glm::vec3(0.0f, 0.0f, 3.0f);
+    test.lastPosition = test.position;
     objects.push_back(test);
 
-    test.position = glm::vec3(0.0f);
-    test.lastPosition = test.position + glm::vec3(0.0f, 29.78e3f, 0.0f) * 1.0f/240.0f;
-    test.mass = 5.9722e24f;
-    test.inverseMass = 1.0f / test.mass;
+    test.position = glm::vec3(0.0f, 0.0f, -3.0f);
+    test.lastPosition = test.position + glm::vec3(0.0f, 0.0f, 0.0f) * 1.0f/240.0f;
     objects.push_back(test);
+
+    // test.position = glm::vec3(0.0f);
+    // test.lastPosition = glm::vec3(0.0f);
+    // test.mass = 1.989e30f;
+    // test.inverseMass = 1.0f / test.mass;
+    // objects.push_back(test);
+
+    // test.position = glm::vec3(1.496e11f, 0.0f, 0.0f);
+    // test.lastPosition = test.position + glm::vec3(0.0f, 29.78e3f, 0.0f) * 1.0f/240.0f;
+    // test.mass = 5.9722e24f;
+    // test.inverseMass = 1.0f / test.mass;
+    // objects.push_back(test);
     
     PhysicsSystem system(objects);
 
@@ -244,6 +253,7 @@ int main() {
         lightingShader.setVec3("cameraRight", camera.Right);
         lightingShader.setVec3("cameraUp", camera.Up);
         lightingShader.setFloat("billboardScale", 0.2f);
+        // lightingShader.setFloat("billboardScale", 696340e3f);
 
         // Draw billboards
         glBindVertexArray(billboardVAO);
