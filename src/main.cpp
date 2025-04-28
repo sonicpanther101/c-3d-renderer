@@ -105,13 +105,13 @@ int main() {
 
     unsigned int billboardVAO, billboardVBO, instanceVBO;
     const float quadVertices[] = {
-        // Positions  // TexCoords
-        -0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.0f, 0.0f,
-        0.5f, -0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.0f, 1.0f,
-        0.5f, -0.5f,  1.0f, 0.0f,
-        0.5f,  0.5f,  1.0f, 1.0f
+        // Positions
+        -0.5f,  0.5f,
+        -0.5f, -0.5f,
+        0.5f, -0.5f,
+        -0.5f,  0.5f,
+        0.5f, -0.5f,
+        0.5f,  0.5f
     };
     
     PhysicsSystem::Particle test;    
@@ -154,37 +154,7 @@ int main() {
 
     lightingShader.use();
 
-    // spotlight
-    lightingShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
-    lightingShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
-
-    lightingShader.setVec3("spotLight.ambient", 0.1f, 0.1f, 0.1f);
-    lightingShader.setVec3("spotLight.diffuse", 0.8f, 0.8f, 0.8f);
-    lightingShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
-
-    lightingShader.setFloat("spotLight.constant",  1.0f);
-    lightingShader.setFloat("spotLight.linear",    0.09f);
-    lightingShader.setFloat("spotLight.quadratic", 0.032f);
-
-    // directional light
-    // lightingShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-    // lightingShader.setVec3("dirLight.ambient", 0.1f, 0.1f, 0.1f);
-    // lightingShader.setVec3("dirLight.diffuse", 0.5f, 0.5f, 0.5f);
-    // lightingShader.setVec3("dirLight.specular", 0.8f, 0.8f, 0.8f);
-
-    // for testing
-    // material properties
-    lightingShader.setFloat("material.shininess", 32.0f);
-
-    // second, configure the light's VAO (VBO stays the same; the vertices are the same for the light object which is also a 3D cube)
-    // unsigned int lightCubeVAO;
-    // glGenVertexArrays(1, &lightCubeVAO);
-    // glBindVertexArray(lightCubeVAO);
-
-    // glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // // note that we update the lamp's position attribute's stride to reflect the updated buffer data
-    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    // glEnableVertexAttribArray(0);
+    lightingShader.setVec3("color", glm::vec3(1.0f, 0.0f, 0.0f));
 
     // draw in wireframe
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -200,10 +170,8 @@ int main() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
 
     // Vertex attributes
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
     // Instance buffer
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
@@ -214,10 +182,6 @@ int main() {
     glVertexAttribDivisor(2, 1);  // Update once per instance
 
     glBindVertexArray(0);
-
-    // stbi_set_flip_vertically_on_load(true);
-    unsigned int texture = loadTexture("../resources/textures/circle.png");
-    lightingShader.setInt("particleTexture", 0);
 
 	system.Start();
 	
@@ -255,29 +219,14 @@ int main() {
         // be sure to activate shader when setting uniforms/drawing objects
         lightingShader.use();
 
-        // flashlight
-        lightingShader.setVec3("spotLight.position",  camera.Position);
-        lightingShader.setVec3("spotLight.direction", camera.Direction);
-
         lightingShader.setVec3("viewPos", camera.Position);
         lightingShader.setFloat("time", static_cast<float>(glfwGetTime()));
-
-        // point lights
-        // for (unsigned int i = 0; i < 4; i++) {
-        //     lightingShader.setVec3("pointLights[" + std::to_string(i) + "].position", pointLightPositions[i]);
-        // }
 
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
-
-        // world transformation
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
-        lightingShader.setMat4("model", model);
 
         // Billboard-specific uniforms
         lightingShader.setVec3("cameraRight", camera.Right);

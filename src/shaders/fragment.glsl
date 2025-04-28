@@ -1,62 +1,21 @@
 #version 330 core
 out vec4 FragColor;
 
-struct SpotLight {
-    vec3 position;  
-    vec3 direction;  
-    float cutOff;
-    float outerCutOff;
-  
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    
-    float constant;
-    float linear;
-    float quadratic;
-};
-
 in vec3 FragPos;
-in vec2 TexCoords;
+in vec2 UV;
 
-uniform vec3 viewPos;
-uniform SpotLight spotLight;
-uniform sampler2D particleTexture;
-uniform float time;
-
-vec3 calculateBillboardLighting(SpotLight light, vec3 fragPos, vec3 viewDir) {
-    // Simplified lighting calculation for billboards
-    vec3 lightDir = normalize(light.position - fragPos);
-    float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
-    
-    // Spotlight intensity
-    float theta = dot(lightDir, normalize(-light.direction)); 
-    float epsilon = light.cutOff - light.outerCutOff;
-    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
-    
-    // Combine components
-    vec3 ambient = light.ambient;
-    vec3 diffuse = light.diffuse * max(dot(viewDir, lightDir), 0.0);
-    
-    return (ambient + diffuse) * attenuation * intensity;
-}
+uniform vec3 color; // Optional: Add color uniformity
 
 void main() {
-    // Sample particle texture with alpha test
-    vec4 texColor = texture(particleTexture, TexCoords);
-    if(texColor.a < 0.1) discard;
+    // Calculate distance from center (procedural circle)
+    vec2 center = UV - vec2(0.5);
+    float dist = length(center);
+    if (dist > 0.5) discard; // Discard fragments outside the circle
 
-    // Billboard-specific normal calculation (facing camera)
-    vec3 viewDir = normalize(viewPos - FragPos);
-    
-    // Simplified lighting calculation
-    vec3 lighting = calculateBillboardLighting(spotLight, FragPos, viewDir);
-    
-    // Final color with alpha
-    FragColor = texColor;
-    // FragColor = vec4(lighting * texColor.rgb, texColor.a);
-    
-    // Optional: Additive blending
-    // FragColor.rgb *= 2.0; // Uncomment for brighter particles
+    // Smooth edges (optional)
+    // float smoothness = 0.02;
+    // float alpha = 1.0 - smoothstep(0.5 - smoothness, 0.5, dist);
+
+    // Solid color (replace with your logic)
+    FragColor = vec4(color, 1.0); // White circles
 }
