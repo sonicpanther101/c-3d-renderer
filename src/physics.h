@@ -9,6 +9,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <cmath>
 
 class PhysicsSystem {
 public:
@@ -18,7 +19,7 @@ public:
         glm::vec3 force = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 velocity = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
-        float mass = 1.0f;
+        float mass = 1.0e11f;
         float inverseMass = 1.0f / mass;
         float radius = 1.0f;
     };
@@ -81,7 +82,7 @@ public:
         }
     }
 private:
-    const float m_FIXED_DT = 1.0f / 60.0f;
+    const float m_FIXED_DT = 1.0f / 240.0f;
 
     void RunSimulationLoop() {
         while (m_Running) {
@@ -92,7 +93,14 @@ private:
 
     void forces() {
         for (Particle &particle : m_PhysicsParticles) {
-            particle.force = glm::vec3(0.0f, 0.0f, 0.0f);
+            particle.force = glm::vec3(0.0f);
+            // simple gravity O(n^2)
+            for (Particle &other : m_PhysicsParticles) {
+                if (&particle != &other) {
+                    float force = 6.674e-11f * particle.mass * other.mass / std::pow(glm::length(particle.position - other.position), 2);
+                    particle.force += force * (other.position - particle.position) / glm::length(particle.position - other.position);
+                }
+            }
         }
     }
 
