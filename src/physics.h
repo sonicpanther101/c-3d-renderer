@@ -108,7 +108,7 @@ private:
         for (Particle &particle : m_PhysicsParticles) {
 	        particle.velocity = particle.position - particle.lastPosition;
 	        particle.lastPosition = particle.position;
-	        particle.acceleration = particle.force * particle.inverseMass * m_dT * m_dT;
+	        particle.acceleration = particle.force * particle.inverseMass * m_dT;
 	        particle.position += particle.velocity + particle.acceleration;
         }
     }
