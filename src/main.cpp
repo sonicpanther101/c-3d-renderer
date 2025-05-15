@@ -9,6 +9,10 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 #include "shader.h"
 #include "camera.h"
 #include "model.h"
@@ -27,8 +31,8 @@ unsigned int loadTexture(char const * path);
 void printVec3(const glm::vec3& v);
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH = 1200;
+const unsigned int SCR_HEIGHT = 800;
 
 bool mouseEnabled = false;
 bool CPressed = false;
@@ -103,7 +107,7 @@ int main() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    unsigned int billboardVAO, billboardVBO, instanceVBO;
+    unsigned int billboardVAO, billboardVBO, instanceVBO, radiiVBO;
     const float quadVertices[] = {
         // Positions
         -0.5f,  0.5f,
@@ -116,10 +120,6 @@ int main() {
     
     PhysicsSystem::Particle test;    
     std::vector<PhysicsSystem::Particle> objects;
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis(0.0, 1.0);
 
     glm::vec3 pos;
     glm::vec3 vel = glm::vec3(0.0f, 0.0f, 0.0f) * 1.0f/240.0f;
@@ -136,7 +136,7 @@ int main() {
 
     test.position = glm::vec3(0.0f, 0.0f, -3.0f);
     test.lastPosition = test.position + glm::vec3(0.0f, 0.0f, 0.0f) * 1.0f/240.0f;
-    objects.push_back(test);
+    // objects.push_back(test);
 
     // test.position = glm::vec3(0.0f);
     // test.lastPosition = glm::vec3(0.0f);
@@ -183,6 +183,7 @@ int main() {
     glGenVertexArrays(1, &billboardVAO);
     glGenBuffers(1, &billboardVBO);
     glGenBuffers(1, &instanceVBO);
+    glGenBuffers(1, &radiiVBO);
 
     glBindVertexArray(billboardVAO);
 
@@ -191,8 +192,16 @@ int main() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
 
     // Vertex attributes
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+
+    // Radii buffer
+    glBindBuffer(GL_ARRAY_BUFFER, radiiVBO);
+    glBufferData(GL_ARRAY_BUFFER, 100 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+    glVertexAttribDivisor(1, 1);
 
     // Instance buffer
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
@@ -203,6 +212,14 @@ int main() {
     glVertexAttribDivisor(2, 1);  // Update once per instance
 
     glBindVertexArray(0);
+
+    // Imgui stuff
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
 
 	system.Start();
 	
@@ -227,6 +244,11 @@ int main() {
         // Update instance data
         glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, radiiVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizes.size() * sizeof(float), sizes.data());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // input
         // -----
@@ -236,6 +258,10 @@ int main() {
         // ------
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
 
         // be sure to activate shader when setting uniforms/drawing objects
         lightingShader.use();
@@ -259,6 +285,16 @@ int main() {
         glBindVertexArray(billboardVAO);
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, positions.size());
 
+        ImGui::Begin("Changer");
+        ImGui::DragFloat("Radius", &system.m_PhysicsParticles[0].radius);
+        // if (ImGui::Button("Button")) {
+        //     world.ChangeTerrainSeed((unsigned int)abs(seed));
+        // }
+		ImGui::End();
+
+        ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
@@ -267,6 +303,10 @@ int main() {
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
+    ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
     glfwTerminate();
     system.Stop();
     return 0;
@@ -291,13 +331,13 @@ void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         camera.ProcessKeyboard(DOWN, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
-        if (!CPressed) {
-            glfwSetInputMode(window, GLFW_CURSOR, (mouseEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
+        if (CPressed < 1) {
             mouseEnabled = !mouseEnabled;
+            glfwSetInputMode(window, GLFW_CURSOR, (mouseEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
         }
-        CPressed = true;
+        CPressed = 100;
     } else {
-        CPressed = false;
+        CPressed -= 1;
     }
 }
 
