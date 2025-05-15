@@ -13,6 +13,8 @@ endmacro()
 
 find_package(OpenGL REQUIRED)
 
+add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+
 # GLFW
 add_subdirectory("vendor/glfw")
 include_directories("vendor/glfw/include")
