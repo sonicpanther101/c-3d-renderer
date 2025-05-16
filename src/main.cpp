@@ -38,7 +38,7 @@ bool mouseEnabled = false;
 bool CPressed = 0;
 
 // camera
-Camera camera(glm::vec3(0.0f, 5.0f, 0.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 5.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -268,7 +268,6 @@ int main() {
         glBindVertexArray(billboardVAO);
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, positions.size());
 
-        ImGui::DockSpaceOverViewport();
 
         ImGui::Begin("Changer");
         ImGui::DragFloat("Scale", &scale);
@@ -307,7 +306,6 @@ int main() {
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.ProcessKeyboard(FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
