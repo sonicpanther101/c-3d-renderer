@@ -11,7 +11,7 @@ void main() {
     // Calculate distance from center (procedural circle)
     vec2 center = UV - vec2(0.5);
     float dist = length(center);
-    if (dist > 0.5/Radius) discard; // Discard fragments outside the circle
+    if (dist > 0.5) discard; // Discard fragments outside the circle
 
     // Smooth edges (optional)
     // float smoothness = 0.02;

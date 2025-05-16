@@ -35,13 +35,14 @@ const unsigned int SCR_WIDTH = 1200;
 const unsigned int SCR_HEIGHT = 800;
 
 bool mouseEnabled = false;
-bool CPressed = false;
+bool CPressed = 0;
 
 // camera
 Camera camera(glm::vec3(0.0f, 5.0f, 0.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
+float scale = 0.2f;
 
 // timing
 float deltaTime = 0.0f;	
@@ -64,9 +65,9 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
+    #ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    #endif
 
     // glfw window creation
     // --------------------
@@ -121,34 +122,9 @@ int main() {
     PhysicsSystem::Particle test;    
     std::vector<PhysicsSystem::Particle> objects;
 
-    glm::vec3 pos;
-    glm::vec3 vel = glm::vec3(0.0f, 0.0f, 0.0f) * 1.0f/240.0f;
-    // for (unsigned int i=0; i<100; i++) {
-    //     pos = glm::vec3(dis(gen),dis(gen),dis(gen));
-    //     test.position = pos;
-    //     test.lastPosition = pos + vel;
-    //     objects.push_back(test);
-    // }
-
-    test.position = glm::vec3(0.0f, 0.0f, 3.0f);
+    test.position = glm::vec3(0.0f, 0.0f, 0.0f);
     test.lastPosition = test.position;
     objects.push_back(test);
-
-    test.position = glm::vec3(0.0f, 0.0f, -3.0f);
-    test.lastPosition = test.position + glm::vec3(0.0f, 0.0f, 0.0f) * 1.0f/240.0f;
-    // objects.push_back(test);
-
-    // test.position = glm::vec3(0.0f);
-    // test.lastPosition = glm::vec3(0.0f);
-    // test.mass = 1.989e30f;
-    // test.inverseMass = 1.0f / test.mass;
-    // objects.push_back(test);
-
-    // test.position = glm::vec3(1.496e11f, 0.0f, 0.0f);
-    // test.lastPosition = test.position + glm::vec3(0.0f, 29.78e3f, 0.0f) * 1.0f/240.0f;
-    // test.mass = 5.9722e24f;
-    // test.inverseMass = 1.0f / test.mass;
-    // objects.push_back(test);
     
     PhysicsSystem system(objects);
 
@@ -217,6 +193,13 @@ int main() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    #if defined(__linux__)
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    #else
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
+    #endif
+
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
@@ -256,7 +239,7 @@ int main() {
 
         // render
         // ------
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         ImGui_ImplOpenGL3_NewFrame();
@@ -278,22 +261,29 @@ int main() {
         // Billboard-specific uniforms
         lightingShader.setVec3("cameraRight", camera.Right);
         lightingShader.setVec3("cameraUp", camera.Up);
-        lightingShader.setFloat("billboardScale", 0.2f);
+        lightingShader.setFloat("billboardScale", scale);
         // lightingShader.setFloat("billboardScale", 696340e3f);
 
         // Draw billboards
         glBindVertexArray(billboardVAO);
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, positions.size());
 
+        ImGui::DockSpaceOverViewport();
+
         ImGui::Begin("Changer");
-        ImGui::DragFloat("Radius", &system.m_PhysicsParticles[0].radius);
-        // if (ImGui::Button("Button")) {
-        //     world.ChangeTerrainSeed((unsigned int)abs(seed));
-        // }
+        ImGui::DragFloat("Scale", &scale);
 		ImGui::End();
 
         ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        // Update and Render additional Platform Windows
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+            GLFWwindow* backup_current_context = glfwGetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            glfwMakeContextCurrent(backup_current_context);
+        }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -332,10 +322,11 @@ void processInput(GLFWwindow *window) {
         camera.ProcessKeyboard(DOWN, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
         if (CPressed < 1) {
+            firstMouse = true;
             mouseEnabled = !mouseEnabled;
             glfwSetInputMode(window, GLFW_CURSOR, (mouseEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
         }
-        CPressed = 100;
+        CPressed = 5;
     } else {
         CPressed -= 1;
     }
