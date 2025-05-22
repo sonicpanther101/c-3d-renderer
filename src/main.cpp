@@ -130,24 +130,7 @@ int main() {
 
     // build and compile our shader program
     // ------------------------------------
-    Shader lightingShader("../src/shaders/vertex.glsl", "../src/shaders/fragment.glsl");
-    // Shader lightCubeShader("../src/shaders/vertex.glsl", "../src/shaders/lightfrag.glsl");
-
-    // light properties
-
-    // point light
-    // for (unsigned int i = 0; i < 4; i++) {
-    //     // we configure the diffuse intensity slightly higher; the right lighting conditions differ with each lighting method and environment.
-    //     // each environment and lighting type requires some tweaking to get the best out of your environment.
-    //     lightingShader.setVec3("pointLights[" + std::to_string(i) + "].ambient", 0.1f, 0.1f, 0.1f);
-    //     lightingShader.setVec3("pointLights[" + std::to_string(i) + "].diffuse", 0.5f, 0.5f, 0.5f);
-    //     lightingShader.setVec3("pointLights[" + std::to_string(i) + "].specular", 0.8f, 0.8f, 0.8f);
-
-    //     // attenuation
-    //     lightingShader.setFloat("pointLights[" + std::to_string(i) + "].constant",  1.0f);
-    //     lightingShader.setFloat("pointLights[" + std::to_string(i) + "].linear",    0.09f);
-    //     lightingShader.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.032f);
-    // }
+    Shader lightingShader("../shaders/vertex.glsl", "../shaders/fragment.glsl");
 
     lightingShader.use();
 
@@ -270,7 +253,8 @@ int main() {
 
 
         ImGui::Begin("Changer");
-        ImGui::DragFloat("Scale", &scale);
+        ImGui::SliderFloat("Scale", &scale, 0.1f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+        ImGui::Checkbox("mouse", &firstMouse);
 		ImGui::End();
 
         ImGui::Render();
