@@ -254,7 +254,6 @@ int main() {
 
         ImGui::Begin("Changer");
         ImGui::SliderFloat("Scale", &scale, 0.1f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-        ImGui::Checkbox("mouse", &firstMouse);
 		ImGui::End();
 
         ImGui::Render();
