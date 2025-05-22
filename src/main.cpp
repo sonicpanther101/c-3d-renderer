@@ -36,6 +36,7 @@ const unsigned int SCR_HEIGHT = 800;
 
 bool mouseEnabled = false;
 bool CPressed = 0;
+bool wireframe = false;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 5.0f));
@@ -136,9 +137,6 @@ int main() {
 
     lightingShader.setVec3("color", glm::vec3(1.0f, 0.0f, 0.0f));
 
-    // draw in wireframe
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
     glGenVertexArrays(1, &billboardVAO);
     glGenBuffers(1, &billboardVBO);
     glGenBuffers(1, &instanceVBO);
@@ -193,6 +191,9 @@ int main() {
     // -----------
 
     while (!glfwWindowShouldClose(window)) {
+
+        if (wireframe)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
         // per-frame time logic
         // --------------------
@@ -254,6 +255,7 @@ int main() {
 
         ImGui::Begin("Changer");
         ImGui::SliderFloat("Scale", &scale, 0.1f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+        ImGui::Checkbox("wireframe", &wireframe);
 		ImGui::End();
 
         ImGui::Render();
