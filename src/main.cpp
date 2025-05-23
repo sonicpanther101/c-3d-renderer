@@ -35,7 +35,7 @@ const unsigned int SCR_WIDTH = 1200;
 const unsigned int SCR_HEIGHT = 800;
 
 bool mouseEnabled = false;
-bool CPressed = 0;
+bool CPressed = false;
 bool wireframe = false;
 
 // camera
@@ -306,14 +306,14 @@ void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         camera.ProcessKeyboard(DOWN, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
-        if (CPressed < 1) {
+        if (!CPressed) {
             firstMouse = true;
             mouseEnabled = !mouseEnabled;
             glfwSetInputMode(window, GLFW_CURSOR, (mouseEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
         }
-        CPressed = 5;
+        CPressed = true;
     } else {
-        CPressed -= 1;
+        CPressed = false;
     }
 }
 
