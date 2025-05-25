@@ -101,14 +101,26 @@ float vertices[] = {
     -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 };
 
+float corners[] = {
+   -0.5f, -0.5f, -0.5f,
+    0.5f, -0.5f, -0.5f,
+    0.5f,  0.5f, -0.5f,
+   -0.5f,  0.5f, -0.5f,
+
+   -0.5f, -0.5f,  0.5f,
+    0.5f, -0.5f,  0.5f,
+    0.5f,  0.5f,  0.5f,
+   -0.5f,  0.5f,  0.5f
+};
+
 int main() {
 
     PhysicsSystem::Particle test;
     std::vector<PhysicsSystem::Particle> objects;
 
-    for (int i = 0; i < 36*5; i+=5) {
-        test.position = glm::vec3(vertices[i], vertices[i+1], vertices[i+2]);
-        test.projection = glm::vec3(vertices[i], vertices[i+1], vertices[i+2]);
+    for (int i = 0; i < 24; i+=3) {
+        test.position = glm::vec3(corners[i], corners[i+1], corners[i+2]);
+        test.projection = glm::vec3(corners[i], corners[i+1], corners[i+2]);
         objects.push_back(test);
     }
     
