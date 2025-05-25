@@ -106,7 +106,7 @@ int main() {
     PhysicsSystem::Particle test;
     std::vector<PhysicsSystem::Particle> objects;
 
-    for (int i = 0; i < 36; i+=5) {
+    for (int i = 0; i < 36*5; i+=5) {
         test.position = glm::vec3(vertices[i], vertices[i+1], vertices[i+2]);
         test.projection = glm::vec3(vertices[i], vertices[i+1], vertices[i+2]);
         objects.push_back(test);
