@@ -25,7 +25,7 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void processInput(GLFWwindow *window);
+void processInput(GLFWwindow *window, PhysicsSystem &physicsSystem);
 glm::vec3 hueToRGB(float hue);
 unsigned int loadTexture(char const * path);
 void printVec3(const glm::vec3& v);
@@ -39,7 +39,7 @@ bool CPressed = false;
 bool wireframe = false;
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 5.0f));
+Camera camera(glm::vec3(2.0f, 0.0f, 10.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -57,7 +57,62 @@ glm::vec3 pointLightPositions[] = {
 	glm::vec3( 0.0f,  0.0f, -3.0f)
 };
 
+float vertices[] = {
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+};
+
 int main() {
+
+    PhysicsSystem::Particle test;
+    std::vector<PhysicsSystem::Particle> objects;
+
+    for (int i = 0; i < 36; i+=5) {
+        test.position = glm::vec3(vertices[i], vertices[i+1], vertices[i+2]);
+        test.projection = glm::vec3(vertices[i], vertices[i+1], vertices[i+2]);
+        objects.push_back(test);
+    }
+    
+    PhysicsSystem system(objects);
 
     // glfw: initialize and configure
     // ------------------------------
@@ -100,7 +155,7 @@ int main() {
     glEnable(GL_DEPTH_TEST);
 
     // render 1 frame to stop flashbang startup
-    processInput(window);
+    processInput(window, system);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glfwSwapBuffers(window);
@@ -119,14 +174,6 @@ int main() {
         0.5f, -0.5f,
         0.5f,  0.5f
     };
-    
-    PhysicsSystem::Particle test;    
-    std::vector<PhysicsSystem::Particle> objects;
-
-    test.position = glm::vec3(0.0f, 0.0f, 0.0f);
-    objects.push_back(test);
-    
-    PhysicsSystem system(objects);
 
     // build and compile our shader program
     // ------------------------------------
@@ -151,21 +198,13 @@ int main() {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
 
-    // Radii buffer
-    glBindBuffer(GL_ARRAY_BUFFER, radiiVBO);
-    glBufferData(GL_ARRAY_BUFFER, 100 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
-
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
-    glVertexAttribDivisor(1, 1);
-
     // Instance buffer
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
     glBufferData(GL_ARRAY_BUFFER, 100 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
 
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
-    glVertexAttribDivisor(2, 1);  // Update once per instance
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glVertexAttribDivisor(1, 1);  // Update once per instance
 
     glBindVertexArray(0);
 
@@ -214,13 +253,9 @@ int main() {
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        glBindBuffer(GL_ARRAY_BUFFER, radiiVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizes.size() * sizeof(float), sizes.data());
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
         // input
         // -----
-        processInput(window);
+        processInput(window, system);
 
         // render
         // ------
@@ -253,10 +288,18 @@ int main() {
         glBindVertexArray(billboardVAO);
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, positions.size());
 
+        // Draw cube
+        // glBindVertexArray(cubeVAO);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+
 
         ImGui::Begin("Changer");
         ImGui::SliderFloat("Scale", &scale, 0.1f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
         ImGui::Checkbox("wireframe", &wireframe);
+        ImGui::Text("Vertecies: %llu", positions.size());
+        for (int i = 0; i < positions.size(); i++) {
+            ImGui::Text("Position %d: (%.2f, %.2f, %.2f)", i, positions[i].x, positions[i].y, positions[i].z);
+        }
 		ImGui::End();
 
         ImGui::Render();
@@ -289,7 +332,7 @@ int main() {
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window) {
+void processInput(GLFWwindow *window, PhysicsSystem &system) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -309,6 +352,11 @@ void processInput(GLFWwindow *window) {
             firstMouse = true;
             mouseEnabled = !mouseEnabled;
             glfwSetInputMode(window, GLFW_CURSOR, (mouseEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
+        }
+        if (!mouseEnabled) {
+            system.Play();
+        } else {
+            system.Pause();
         }
         CPressed = true;
     } else {

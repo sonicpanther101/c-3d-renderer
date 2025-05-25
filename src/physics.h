@@ -26,6 +26,8 @@ public:
     
     void Start();
     void Stop();
+    void Pause();
+    void Play();
     void Step();
     void GetParticlePositions(std::vector<glm::vec3>& positions);
     void GetParticleSizes(std::vector<float>& sizes);
@@ -36,6 +38,7 @@ private:
     std::vector<Particle> m_PhysicsParticles;
     std::vector<Particle> m_RenderParticles;
     std::atomic<bool> m_Running{false};
+    std::atomic<bool> m_Paused{false};
     std::thread m_SimulationThread;
     std::mutex m_SwapMutex;
     

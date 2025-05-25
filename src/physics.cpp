@@ -32,6 +32,14 @@ void PhysicsSystem::Stop() {
     }
 }
 
+void PhysicsSystem::Pause() {
+    m_Paused.store(true);
+}
+
+void PhysicsSystem::Play() {
+    m_Paused.store(false);
+}
+
 void PhysicsSystem::Step() {
     std::chrono::high_resolution_clock::time_point current = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float, std::milli> diff = current - m_LastTime;
@@ -63,7 +71,9 @@ void PhysicsSystem::GetParticleSizes(std::vector<float>& sizes) {
 
 void PhysicsSystem::RunSimulationLoop() {
     while (m_Running) {
-        Step();
+        if (!m_Paused.load()) {  // Check pause state
+            Step();
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(m_FIXED_DT * 1000)));
     }
 }
@@ -126,6 +136,14 @@ void PhysicsSystem::dampenVelocities() {
     }
 }
 
+void PhysicsSystem::generateCollisionConstraints(glm::vec3* position, glm::vec3* projection) {
+    // TODO: Implement collision constraint generation
+}
+
+void PhysicsSystem::projectConstraints() {
+    // TODO: Implement constraint projection
+}
+
 void PhysicsSystem::move() {
     // (5)
     for (Particle &particle : m_PhysicsParticles) {
@@ -133,7 +151,7 @@ void PhysicsSystem::move() {
     }
 
     // (6)
-    dampenVelocities();
+    // dampenVelocities();
 
     // (7)
     for (Particle &particle : m_PhysicsParticles) {
