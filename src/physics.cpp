@@ -6,6 +6,7 @@
 const float physicsFPS = 240.0f;
 const float PhysicsSystem::m_FIXED_DT = 1.0f / physicsFPS;
 const float PhysicsSystem::m_DAMPING_CONSTANT = 0.98f;
+const int PhysicsSystem::m_SOLVER_ITERATIONS = 1;
 
 PhysicsSystem::PhysicsSystem(std::vector<Particle> &particles) 
     : m_PhysicsParticles(particles), m_RenderParticles(particles) {
@@ -71,7 +72,7 @@ glm::vec3 PhysicsSystem::externalForces(glm::vec3 *position) {
     return glm::vec3(0.0f, 0.0f, 0.0f);
 }
 
-glm::mat3 skewSymmetric(const glm::vec3& r) {
+glm::mat3 PhysicsSystem::skewSymmetric(const glm::vec3& r) {
     return glm::mat3(
         0.0f,  -r.z,    r.y,
         r.z,    0.0f,  -r.x,
@@ -79,7 +80,8 @@ glm::mat3 skewSymmetric(const glm::vec3& r) {
     );
 }
 
-void PhysicsSystem::dampenVelocities(std::vector<Particle> *particles) {
+void PhysicsSystem::dampenVelocities() {
+    // (1) & (2)
     glm::vec3 CMPosition;
     glm::vec3 CMVelocity;
 
@@ -87,11 +89,13 @@ void PhysicsSystem::dampenVelocities(std::vector<Particle> *particles) {
     glm::vec3 sumVelxMass;
     glm::vec3 sumMass;
    
-    for (Particle &particle : *particles) {
+    for (Particle &particle : m_PhysicsParticles) {
         sumPosxMass += particle.position * particle.mass;
         sumVelxMass += particle.velocity * particle.mass;
         sumMass += particle.mass;
     }
+
+    // (3) & (4)
 
     CMPosition = sumPosxMass / sumMass;
     CMVelocity = sumVelxMass / sumMass;
@@ -99,7 +103,7 @@ void PhysicsSystem::dampenVelocities(std::vector<Particle> *particles) {
     glm::vec3 angularMomentum;
     glm::mat3 inertiaTensor;
     
-    for (Particle &particle : *particles) {
+    for (Particle &particle : m_PhysicsParticles) {
         
         glm::vec3 rad = particle.position - CMPosition;
         
@@ -110,9 +114,13 @@ void PhysicsSystem::dampenVelocities(std::vector<Particle> *particles) {
         inertiaTensor += radTensor * glm::transpose(radTensor) * particle.mass;
     }
 
+    // (5)
+
     glm::vec3 angularVelocity = glm::inverse(inertiaTensor) * angularMomentum;
 
-    for (Particle &particle : *particles) {
+    // (6)
+
+    for (Particle &particle : m_PhysicsParticles) {
         glm::vec3 deltaVelocity = CMVelocity + glm::cross(angularVelocity, particle.position - CMPosition) - particle.velocity;
         particle.velocity += m_DAMPING_CONSTANT * deltaVelocity;
     }
@@ -123,7 +131,34 @@ void PhysicsSystem::move() {
     for (Particle &particle : m_PhysicsParticles) {
         particle.velocity = particle.position + m_dT * particle.inverseMass * externalForces(&particle.position);
     }
-    // (6)
-    dampenVelocities(&m_PhysicsParticles);
 
+    // (6)
+    dampenVelocities();
+
+    // (7)
+    for (Particle &particle : m_PhysicsParticles) {
+        particle.projection = particle.position + m_dT * particle.velocity;
+    }
+
+    // (8)
+    for (Particle &particle : m_PhysicsParticles) {
+        generateCollisionConstraints(&particle.position, &particle.projection);
+    }
+
+    // (9) - (11)
+    for (uint16_t i = 0; i < m_SOLVER_ITERATIONS; i++) {
+        // (10)
+        projectConstraints();
+    }
+
+    // (12) - (15)
+    for (Particle &particle : m_PhysicsParticles) {
+        // (13)
+        particle.velocity = (particle.projection - particle.position) / m_dT;
+        // (14)
+        particle.position = particle.projection;
+    }
+
+    // (16)
+    // dampen velocities of vertices involved in a collision perpendicular to the collision normal and reflected in the direction of the collision normal
 }

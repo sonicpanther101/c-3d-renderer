@@ -12,6 +12,7 @@ class PhysicsSystem {
 public:
     struct Particle {
         glm::vec3 position;
+        glm::vec3 projection;
         glm::vec3 force = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 velocity = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -40,10 +41,13 @@ private:
     
     static const float m_FIXED_DT;
     static const float m_DAMPING_CONSTANT;
+    static const int m_SOLVER_ITERATIONS;
 
     void RunSimulationLoop();
     glm::vec3 externalForces(glm::vec3 *position);
     glm::mat3 skewSymmetric(const glm::vec3& r);
-    void dampenVelocities(std::vector<Particle> *particles);
+    void dampenVelocities();
+    void generateCollisionConstraints(glm::vec3 *position, glm::vec3 *projection);
+    void projectConstraints();
     void move();
 };

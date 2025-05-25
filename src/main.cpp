@@ -124,7 +124,6 @@ int main() {
     std::vector<PhysicsSystem::Particle> objects;
 
     test.position = glm::vec3(0.0f, 0.0f, 0.0f);
-    test.lastPosition = test.position;
     objects.push_back(test);
     
     PhysicsSystem system(objects);
