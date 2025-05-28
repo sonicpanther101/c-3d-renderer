@@ -11,17 +11,42 @@
 class PhysicsSystem {
 public:
     struct Particle {
+        int index;
         glm::vec3 position;
         glm::vec3 projection;
         glm::vec3 force = glm::vec3(0.0f, 0.0f, 0.0f);
-        glm::vec3 velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::vec3 velocity;
         glm::vec3 acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
-        float mass = 1.0f;
-        float inverseMass = 1.0f / mass;
-        float radius = 1.0f;
+        float mass;
+        float inverseMass;
+        float radius;
+
+        Particle(int Index, glm::vec3 Position, glm::vec3 Velocity, float Mass = 1.0f, float Radius = 1.0f) {
+            index = Index;
+            position = Position;
+            projection = Position;
+            velocity = Velocity;
+            mass = Mass;
+            inverseMass = 1.0f / mass;
+            radius = Radius;
+        }
     };
 
-    PhysicsSystem(std::vector<Particle> &particles);
+    struct Constraint {
+        int jndex;
+        std::vector<int> indecies;
+        float stiffness;
+        bool equality;
+
+        Constraint(int Jndex, std::vector<int> Indecies, float Stiffness = 1.0f, bool Equality = false) {
+            jndex = Jndex;
+            indecies = Indecies;
+            stiffness = Stiffness;
+            equality = Equality;
+        }
+    };
+
+    PhysicsSystem(std::vector<Particle> &particles, std::vector<Constraint> &constraints);
     ~PhysicsSystem();
     
     void Start();
@@ -37,6 +62,7 @@ private:
     float m_dT;
     std::vector<Particle> m_PhysicsParticles;
     std::vector<Particle> m_RenderParticles;
+    std::vector<Constraint> m_Constraints;
     std::atomic<bool> m_Running{false};
     std::atomic<bool> m_Paused{false};
     std::thread m_SimulationThread;

@@ -113,18 +113,45 @@ float corners[] = {
    -0.5f,  0.5f,  0.5f
 };
 
+std::vector<int> edgeConstraints[] = {
+    // back
+    {0, 1},
+    {1, 2},
+    {2, 3},
+    {3, 0},
+    // front
+    {4, 5},
+    {5, 6},
+    {6, 7},
+    {7, 4},
+    // middle
+    {0, 4},
+    {1, 5},
+    {2, 6},
+    {3, 7},
+    // diagonals
+    {0, 2},
+    {0, 5},
+    {0, 7},
+    {1, 6},
+    {3, 6},
+    {4, 6}
+};
+
 int main() {
 
-    PhysicsSystem::Particle test;
-    std::vector<PhysicsSystem::Particle> objects;
+    std::vector<PhysicsSystem::Particle> vertecies;
+    std::vector<PhysicsSystem::Constraint> edges;
 
     for (int i = 0; i < 24; i+=3) {
-        test.position = glm::vec3(corners[i], corners[i+1], corners[i+2]);
-        test.projection = glm::vec3(corners[i], corners[i+1], corners[i+2]);
-        objects.push_back(test);
+        vertecies.push_back(PhysicsSystem::Particle(i, glm::vec3(corners[i], corners[i+1], corners[i+2]), glm::vec3(0.0f)));
+    }
+
+    for (int j = 0; j < 18; j++) {
+        edges.push_back(PhysicsSystem::Constraint(j, edgeConstraints[j]));
     }
     
-    PhysicsSystem system(objects);
+    PhysicsSystem system(vertecies, edges);
 
     // glfw: initialize and configure
     // ------------------------------

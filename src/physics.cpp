@@ -8,8 +8,8 @@ const float PhysicsSystem::m_FIXED_DT = 1.0f / physicsFPS;
 const float PhysicsSystem::m_DAMPING_CONSTANT = 0.98f;
 const int PhysicsSystem::m_SOLVER_ITERATIONS = 1;
 
-PhysicsSystem::PhysicsSystem(std::vector<Particle> &particles) 
-    : m_PhysicsParticles(particles), m_RenderParticles(particles) {
+PhysicsSystem::PhysicsSystem(std::vector<Particle> &particles, std::vector<Constraint> &constraints) 
+    : m_PhysicsParticles(particles), m_RenderParticles(particles), m_Constraints(constraints) {
     m_LastTime = std::chrono::high_resolution_clock::now();
 }
 
@@ -95,9 +95,9 @@ void PhysicsSystem::dampenVelocities() {
     glm::vec3 CMPosition;
     glm::vec3 CMVelocity;
 
-    glm::vec3 sumPosxMass;
-    glm::vec3 sumVelxMass;
-    glm::vec3 sumMass;
+    glm::vec3 sumPosxMass = glm::vec3(0.0f);
+    glm::vec3 sumVelxMass = glm::vec3(0.0f);
+    glm::vec3 sumMass = glm::vec3(0.0f);
    
     for (Particle &particle : m_PhysicsParticles) {
         sumPosxMass += particle.position * particle.mass;
@@ -110,8 +110,8 @@ void PhysicsSystem::dampenVelocities() {
     CMPosition = sumPosxMass / sumMass;
     CMVelocity = sumVelxMass / sumMass;
 
-    glm::vec3 angularMomentum;
-    glm::mat3 inertiaTensor;
+    glm::vec3 angularMomentum = glm::vec3(0.0f);
+    glm::mat3 inertiaTensor = glm::mat3(0.0f);
     
     for (Particle &particle : m_PhysicsParticles) {
         
@@ -147,11 +147,11 @@ void PhysicsSystem::projectConstraints() {
 void PhysicsSystem::move() {
     // (5)
     for (Particle &particle : m_PhysicsParticles) {
-        particle.velocity = particle.position + m_dT * particle.inverseMass * externalForces(&particle.position);
+        particle.velocity += m_dT * particle.inverseMass * externalForces(&particle.position);
     }
 
     // (6)
-    // dampenVelocities();
+    dampenVelocities();
 
     // (7)
     for (Particle &particle : m_PhysicsParticles) {
