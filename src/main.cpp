@@ -146,10 +146,17 @@ int main() {
     for (int i = 0; i < 24; i+=3) {
         vertecies.push_back(PhysicsSystem::Particle(i, glm::vec3(corners[i], corners[i+1], corners[i+2]), glm::vec3(0.0f)));
     }
-    vertecies[0].velocity = glm::vec3(0.0f, 0.0f, 5.0f);
+    vertecies[0].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
 
     for (int j = 0; j < 18; j++) {
         edges.push_back(PhysicsSystem::Constraint(edgeConstraints[j], 1.0f));
+    }
+
+    // for rendering cube
+    std::vector<unsigned int> edgeIndices;
+    for (int i = 0; i < 18; i++) {
+        edgeIndices.push_back(edgeConstraints[i][0]);
+        edgeIndices.push_back(edgeConstraints[i][1]);
     }
     
     PhysicsSystem system(vertecies, edges);
@@ -218,6 +225,7 @@ int main() {
     // build and compile our shader program
     // ------------------------------------
     Shader lightingShader("../shaders/vertex.glsl", "../shaders/fragment.glsl");
+    Shader lineShader("../shaders/line_vertex.glsl", "../shaders/line_fragment.glsl");
 
     lightingShader.use();
 
@@ -246,6 +254,24 @@ int main() {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glVertexAttribDivisor(1, 1);  // Update once per instance
 
+    glBindVertexArray(0);
+
+    // rendering cube
+
+    unsigned int cubeVAO, cubeVBO, cubeEBO;
+    glGenVertexArrays(1, &cubeVAO);
+    glGenBuffers(1, &cubeVBO);
+    glGenBuffers(1, &cubeEBO);
+
+    glBindVertexArray(cubeVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+    glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubeEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, edgeIndices.size() * sizeof(unsigned int), edgeIndices.data(), GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glBindVertexArray(0);
 
     // Imgui stuff
@@ -293,6 +319,10 @@ int main() {
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+        // Update cube positions
+        glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
+
         // input
         // -----
         processInput(window, system);
@@ -329,10 +359,15 @@ int main() {
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, positions.size());
 
         // Draw cube
-        // glBindVertexArray(cubeVAO);
-        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        glLineWidth(2.0f); // Make lines thicker
+        lineShader.use();
+        lineShader.setMat4("projection", projection);
+        lineShader.setMat4("view", view);
+        glBindVertexArray(cubeVAO);
+        glDrawElements(GL_LINES, edgeIndices.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
 
-
+        // ImGui
         ImGui::Begin("Changer");
         ImGui::SliderFloat("Scale", &scale, 0.1f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
         ImGui::Checkbox("wireframe", &wireframe);
@@ -364,6 +399,10 @@ int main() {
     ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+
+    glDeleteVertexArrays(1, &cubeVAO);
+    glDeleteBuffers(1, &cubeVBO);
+    glDeleteBuffers(1, &cubeEBO);
 
     glfwTerminate();
     system.Stop();
