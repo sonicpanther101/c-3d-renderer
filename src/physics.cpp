@@ -6,7 +6,7 @@
 const float physicsFPS = 240.0f;
 const float PhysicsSystem::m_FIXED_DT = 1.0f / physicsFPS;
 const float PhysicsSystem::m_DAMPING_CONSTANT = 0.98f;
-const int PhysicsSystem::m_SOLVER_ITERATIONS = 1;
+const int PhysicsSystem::m_SOLVER_ITERATIONS = 10;
 
 PhysicsSystem::PhysicsSystem(std::vector<Particle> &particles, std::vector<Constraint> &constraints) 
     : m_PhysicsParticles(particles), m_RenderParticles(particles), m_Constraints(constraints) {
@@ -141,7 +141,27 @@ void PhysicsSystem::generateCollisionConstraints(glm::vec3* position, glm::vec3*
 }
 
 void PhysicsSystem::projectConstraints() {
-    // TODO: Implement constraint projection
+
+    // eq (10) & (11) delta projection = w1/(w1+w2) * constraintDelta * (p1-p2)/|p1-p2|
+
+    for (Constraint &constraint : m_Constraints) {
+
+        
+        Particle* particle1 = &m_PhysicsParticles[constraint.indecies[0]];
+        Particle* particle2 = &m_PhysicsParticles[constraint.indecies[1]];
+        
+        glm::vec3 difference = particle1->position - particle2->position;
+        
+        float constraintDelta = constraint.distanceFunction(difference);
+        
+        if (constraint.equality && constraintDelta != 0.0f) return;
+        if (!constraint.equality && constraintDelta >= 0.0f) return;
+
+        glm::vec3 correction = constraintDelta * glm::normalize(difference) / (particle1->inverseMass + particle2->inverseMass);
+
+        particle1->projection -= particle1->inverseMass * correction;
+        particle2->projection += particle2->inverseMass * correction;
+    }
 }
 
 void PhysicsSystem::move() {

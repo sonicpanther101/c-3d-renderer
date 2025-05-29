@@ -146,9 +146,10 @@ int main() {
     for (int i = 0; i < 24; i+=3) {
         vertecies.push_back(PhysicsSystem::Particle(i, glm::vec3(corners[i], corners[i+1], corners[i+2]), glm::vec3(0.0f)));
     }
+    vertecies[0].velocity = glm::vec3(0.0f, 0.0f, 5.0f);
 
     for (int j = 0; j < 18; j++) {
-        edges.push_back(PhysicsSystem::Constraint(j, edgeConstraints[j]));
+        edges.push_back(PhysicsSystem::Constraint(edgeConstraints[j], 1.0f));
     }
     
     PhysicsSystem system(vertecies, edges);

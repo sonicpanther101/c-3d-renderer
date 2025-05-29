@@ -33,14 +33,18 @@ public:
     };
 
     struct Constraint {
-        int jndex;
         std::vector<int> indecies;
         float stiffness;
         bool equality;
+        int cardinality = 2;
+        float distance;
+        float distanceFunction(glm::vec3 difference) {
+            return glm::length(glm::abs(difference)) - distance;
+        };
 
-        Constraint(int Jndex, std::vector<int> Indecies, float Stiffness = 1.0f, bool Equality = false) {
-            jndex = Jndex;
+        Constraint(std::vector<int> Indecies, float Distance, float Stiffness = 0.98f, bool Equality = true) {
             indecies = Indecies;
+            distance = Distance;
             stiffness = Stiffness;
             equality = Equality;
         }
