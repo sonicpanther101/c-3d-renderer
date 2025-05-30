@@ -141,16 +141,15 @@ std::vector<int> edgeConstraints[] = {
 int main() {
 
     std::vector<PhysicsSystem::Particle> vertecies;
-    std::vector<PhysicsSystem::Particle> vertecies1;
     std::vector<PhysicsSystem::Constraint> edges;
 
     for (int i = 0; i < 24; i+=3) {
-        vertecies.push_back(PhysicsSystem::Particle(i, glm::vec3(corners[i], corners[i+1], corners[i+2]), glm::vec3(0.0f)));
+        vertecies.push_back(PhysicsSystem::Particle(vertecies.size(), glm::vec3(corners[i], corners[i+1], corners[i+2]), glm::vec3(0.0f)));
     }
     for (int i = 0; i < 24; i+=3) {
-        vertecies1.push_back(PhysicsSystem::Particle(i, glm::vec3(corners[i], corners[i+1]+1.5f, corners[i+2]), glm::vec3(0.0f)));
+        vertecies.push_back(PhysicsSystem::Particle(vertecies.size(), glm::vec3(corners[i], corners[i+1]+1.5f, corners[i+2]), glm::vec3(0.0f)));
     }
-    vertecies[0].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
+    // vertecies[0].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
 
     for (int j = 0; j < 12; j++) {
         edges.push_back(PhysicsSystem::Constraint(edgeConstraints[j], 1.0f));
@@ -161,8 +160,27 @@ int main() {
     for (int j = 0; j < 12; j++) {
         edges.push_back(PhysicsSystem::Constraint({edgeConstraints[j][0]+8, edgeConstraints[j][1]+8}, 1.0f));
     }
-    for (int j = 12; j < 8; j++) {
+    for (int j = 12; j < 18; j++) {
         edges.push_back(PhysicsSystem::Constraint({edgeConstraints[j][0]+8, edgeConstraints[j][1]+8}, 1.41421f));
+    }
+
+    for (int i = 0; i < 16; i++) {
+        edges.push_back(PhysicsSystem::Constraint(
+            {i},  // indices
+            1.0f,              // stiffness
+            false,             // inequality
+            1,                 // cardinality
+            [](auto particles) -> float {
+                return particles[0]->position.y;
+            },
+            [](auto particles) -> std::vector<glm::vec3> {
+                if (particles.size() != 1) {
+                    std::cerr << "Expected 1 particle in gradient, got " << particles.size() << "\n";
+                    return {glm::vec3(0,0,0)};
+                }
+                return std::vector<glm::vec3>{glm::vec3(0,1,0)};
+            }
+        ));
     }
 
     // for rendering cube

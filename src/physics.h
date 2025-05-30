@@ -41,25 +41,26 @@ public:
         float kPrime;
         bool equality;
         int cardinality;
-        float distance;
 
-        float function(std::vector<Particle*> particles) {
-            if (cardinality != 2) {
+        std::function<float(std::vector<Particle*>)> function;
+        std::function<std::vector<glm::vec3>(std::vector<Particle*>)> gradient;
+
+        static float defaultFunction(std::vector<Particle*> particles) {
+            if (particles.size() != 2) {
                 std::cout << "Constraint for that dimension is not supported yet" << std::endl;
                 return 0.0f;
             }
             glm::vec3 difference = particles[0]->position - particles[1]->position;
-            return glm::length(difference) - distance;
-        };
+            return glm::length(difference) - 1.0f;
+        }
 
-        std::vector<glm::vec3> gradient(std::vector<Particle*> particles) {
-            if (cardinality != 2) {
+        static std::vector<glm::vec3> defaultGradient(std::vector<Particle*> particles) {
+            if (particles.size() != 2) {
                 std::cout << "Constraint for that dimension is not supported yet" << std::endl;
                 return {glm::vec3(0.0f), glm::vec3(0.0f)};
             }
 
             glm::vec3 difference = particles[0]->position - particles[1]->position;
-
             float length = glm::length(difference);
 
             if (length < EPSILON) {
@@ -67,17 +68,25 @@ public:
             }
 
             glm::vec3 normalized = difference / length;
-
             return {normalized, -normalized};
-        };
+        }
 
-        Constraint(std::vector<int> indices, float Distance, float Stiffness = 0.98f, bool Equality = true, int Cardinality = 2) {
-            indices = indices;
-            distance = Distance;
-            stiffness = Stiffness;
-            kPrime = 1.0f - Stiffness;
-            equality = Equality;
-            cardinality = Cardinality;
+        Constraint(
+            std::vector<int> Indices, 
+            float Stiffness = 0.98f, 
+            bool Equality = true, 
+            int Cardinality = 2, 
+            std::function<float(std::vector<Particle*>)> Function = defaultFunction,
+            std::function<std::vector<glm::vec3>(std::vector<Particle*>)> Gradient = defaultGradient
+        ) : 
+            indices(Indices), 
+            stiffness(Stiffness),
+            equality(Equality), 
+            cardinality(Cardinality), 
+            function(Function),
+            gradient(Gradient)
+        {
+            kPrime = 1.0f - stiffness;
         }
     };
 
@@ -111,7 +120,7 @@ private:
     glm::vec3 externalForces(glm::vec3 *position);
     glm::mat3 skewSymmetric(const glm::vec3& r);
     void dampenVelocities();
-    void generateCollisionConstraints(glm::vec3 *position, glm::vec3 *projection);
+    void generateCollisionConstraints(Particle particle);
     void projectConstraints();
     void move();
 };
