@@ -141,15 +141,28 @@ std::vector<int> edgeConstraints[] = {
 int main() {
 
     std::vector<PhysicsSystem::Particle> vertecies;
+    std::vector<PhysicsSystem::Particle> vertecies1;
     std::vector<PhysicsSystem::Constraint> edges;
 
     for (int i = 0; i < 24; i+=3) {
         vertecies.push_back(PhysicsSystem::Particle(i, glm::vec3(corners[i], corners[i+1], corners[i+2]), glm::vec3(0.0f)));
     }
+    for (int i = 0; i < 24; i+=3) {
+        vertecies1.push_back(PhysicsSystem::Particle(i, glm::vec3(corners[i], corners[i+1]+1.5f, corners[i+2]), glm::vec3(0.0f)));
+    }
     vertecies[0].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
 
-    for (int j = 0; j < 18; j++) {
+    for (int j = 0; j < 12; j++) {
         edges.push_back(PhysicsSystem::Constraint(edgeConstraints[j], 1.0f));
+    }
+    for (int j = 12; j < 18; j++) {
+        edges.push_back(PhysicsSystem::Constraint(edgeConstraints[j], 1.41421f));
+    }
+    for (int j = 0; j < 12; j++) {
+        edges.push_back(PhysicsSystem::Constraint({edgeConstraints[j][0]+8, edgeConstraints[j][1]+8}, 1.0f));
+    }
+    for (int j = 12; j < 8; j++) {
+        edges.push_back(PhysicsSystem::Constraint({edgeConstraints[j][0]+8, edgeConstraints[j][1]+8}, 1.41421f));
     }
 
     // for rendering cube
@@ -157,6 +170,10 @@ int main() {
     for (int i = 0; i < 18; i++) {
         edgeIndices.push_back(edgeConstraints[i][0]);
         edgeIndices.push_back(edgeConstraints[i][1]);
+    }
+    for (int i = 0; i < 18; i++) {
+        edgeIndices.push_back(edgeConstraints[i][0]+8);
+        edgeIndices.push_back(edgeConstraints[i][1]+8);
     }
     
     PhysicsSystem system(vertecies, edges);
@@ -236,16 +253,19 @@ int main() {
         // Top face
         3, 2, 6, 6, 7, 3
     };
+    for (int i = 0; i < 36; i++) {
+        faceIndices.push_back(faceIndices[i] + 8);
+    }
 
     // build and compile our shader program
     // ------------------------------------
-    Shader lightingShader("../shaders/vertex.glsl", "../shaders/fragment.glsl");
+    Shader pointShader("../shaders/point_vertex.glsl", "../shaders/point_fragment.glsl");
     Shader lineShader("../shaders/line_vertex.glsl", "../shaders/line_fragment.glsl");
     Shader cubeShader("../shaders/cube_vertex.glsl", "../shaders/cube_fragment.glsl");
 
-    lightingShader.use();
+    pointShader.use();
 
-    lightingShader.setVec3("color", glm::vec3(1.0f, 0.0f, 0.0f));
+    pointShader.setVec3("color", glm::vec3(1.0f, 0.0f, 0.0f));
 
     glGenVertexArrays(1, &billboardVAO);
     glGenBuffers(1, &billboardVBO);
@@ -284,7 +304,7 @@ int main() {
 
     glBindVertexArray(cubeVAO);
     glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-    glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, faceIndices.size() * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubeEBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, faceIndices.size() * sizeof(unsigned int), faceIndices.data(), GL_STATIC_DRAW);
@@ -295,7 +315,7 @@ int main() {
 
     glBindVertexArray(cubelinesVAO);
     glBindBuffer(GL_ARRAY_BUFFER, cubelinesVBO);
-    glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, edgeIndices.size() * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubelinesEBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, edgeIndices.size() * sizeof(unsigned int), edgeIndices.data(), GL_STATIC_DRAW);
@@ -351,9 +371,9 @@ int main() {
 
         // Update cube positions
         glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, 8 * sizeof(glm::vec3), positions.data());
+        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
         glBindBuffer(GL_ARRAY_BUFFER, cubelinesVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, 8 * sizeof(glm::vec3), positions.data());
+        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
 
 
         // input
@@ -372,8 +392,8 @@ int main() {
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
-        lightingShader.setMat4("projection", projection);
-        lightingShader.setMat4("view", view);
+        pointShader.setMat4("projection", projection);
+        pointShader.setMat4("view", view);
 
         // Draw cube
 
@@ -398,16 +418,16 @@ int main() {
         glBindVertexArray(0);
 
         // be sure to activate shader when setting uniforms/drawing objects
-        lightingShader.use();
+        pointShader.use();
 
-        lightingShader.setVec3("viewPos", camera.Position);
-        lightingShader.setFloat("time", static_cast<float>(glfwGetTime()));
+        pointShader.setVec3("viewPos", camera.Position);
+        pointShader.setFloat("time", static_cast<float>(glfwGetTime()));
 
         // Billboard-specific uniforms
-        lightingShader.setVec3("cameraRight", camera.Right);
-        lightingShader.setVec3("cameraUp", camera.Up);
-        lightingShader.setFloat("billboardScale", scale);
-        // lightingShader.setFloat("billboardScale", 696340e3f);
+        pointShader.setVec3("cameraRight", camera.Right);
+        pointShader.setVec3("cameraUp", camera.Up);
+        pointShader.setFloat("billboardScale", scale);
+        // pointShader.setFloat("billboardScale", 696340e3f);
 
         // Draw billboards
         glBindVertexArray(billboardVAO);

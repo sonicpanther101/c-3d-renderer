@@ -80,6 +80,7 @@ void PhysicsSystem::RunSimulationLoop() {
 
 glm::vec3 PhysicsSystem::externalForces(glm::vec3 *position) {
     return glm::vec3(0.0f, 0.0f, 0.0f);
+    // return glm::vec3(0.0f, -9.81f, 0.0f);
 }
 
 glm::mat3 PhysicsSystem::skewSymmetric(const glm::vec3& r) {
@@ -137,30 +138,45 @@ void PhysicsSystem::dampenVelocities() {
 }
 
 void PhysicsSystem::generateCollisionConstraints(glm::vec3* position, glm::vec3* projection) {
+    if (projection->y < 0) { // Ground plane at y=0
+        projection->y = 0; // Simple position correction
+    }
     // TODO: Implement collision constraint generation
 }
 
 void PhysicsSystem::projectConstraints() {
 
-    // eq (10) & (11) delta projection = w1/(w1+w2) * constraintDelta * (p1-p2)/|p1-p2|
+    // eq (10) & (11) delta projection = w1/(w1+w2) * evaluatedConstraint * (p1-p2)/|p1-p2|
 
     for (Constraint &constraint : m_Constraints) {
+        
+        std::vector<Particle*> particles;
+        for (int i : constraint.indices) {
+            particles.push_back(&m_PhysicsParticles[i]);
+        }
+        
+        float evaluatedConstraint = constraint.function(particles);
+        
+        if (constraint.equality && std::abs(evaluatedConstraint) <= EPSILON) continue;
+        if (!constraint.equality && evaluatedConstraint >= 0.0f) continue;
+        
+        // Compute gradients (generic)
+        std::vector<glm::vec3> gradients = constraint.gradient(particles);
 
-        
-        Particle* particle1 = &m_PhysicsParticles[constraint.indecies[0]];
-        Particle* particle2 = &m_PhysicsParticles[constraint.indecies[1]];
-        
-        glm::vec3 difference = particle1->position - particle2->position;
-        
-        float constraintDelta = constraint.distanceFunction(difference);
-        
-        if (constraint.equality && constraintDelta != 0.0f) return;
-        if (!constraint.equality && constraintDelta >= 0.0f) return;
+        // Compute denominator ∑ w_j |∇C_j|²
+        float denom = 0.0f;
+        for (int i = 0; i < particles.size(); i++) {
+            denom += particles[i]->inverseMass * glm::dot(gradients[i], gradients[i]);
+        }
+        if (denom < EPSILON) continue;
 
-        glm::vec3 correction = constraintDelta * glm::normalize(difference) / (particle1->inverseMass + particle2->inverseMass);
+        // Compute scaling factor s = k' * C / denom
+        float scalingFactor = constraint.kPrime * evaluatedConstraint / denom;
 
-        particle1->projection -= particle1->inverseMass * correction;
-        particle2->projection += particle2->inverseMass * correction;
+        // Apply corrections (IMMEDIATE UPDATE)
+        for (int i = 0; i < particles.size(); i++) {
+            particles[i]->position += -scalingFactor * particles[i]->inverseMass * gradients[i];
+        }
     }
 }
 

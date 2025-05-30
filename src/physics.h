@@ -7,6 +7,9 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <iostream>
+
+const float EPSILON = 1e-6f;
 
 class PhysicsSystem {
 public:
@@ -33,20 +36,48 @@ public:
     };
 
     struct Constraint {
-        std::vector<int> indecies;
+        std::vector<int> indices;
         float stiffness;
+        float kPrime;
         bool equality;
-        int cardinality = 2;
+        int cardinality;
         float distance;
-        float distanceFunction(glm::vec3 difference) {
-            return glm::length(glm::abs(difference)) - distance;
+
+        float function(std::vector<Particle*> particles) {
+            if (cardinality != 2) {
+                std::cout << "Constraint for that dimension is not supported yet" << std::endl;
+                return 0.0f;
+            }
+            glm::vec3 difference = particles[0]->position - particles[1]->position;
+            return glm::length(difference) - distance;
         };
 
-        Constraint(std::vector<int> Indecies, float Distance, float Stiffness = 0.98f, bool Equality = true) {
-            indecies = Indecies;
+        std::vector<glm::vec3> gradient(std::vector<Particle*> particles) {
+            if (cardinality != 2) {
+                std::cout << "Constraint for that dimension is not supported yet" << std::endl;
+                return {glm::vec3(0.0f), glm::vec3(0.0f)};
+            }
+
+            glm::vec3 difference = particles[0]->position - particles[1]->position;
+
+            float length = glm::length(difference);
+
+            if (length < EPSILON) {
+                return {glm::vec3(0.0f), glm::vec3(0.0f)};
+            }
+
+            glm::vec3 normalized = difference / length;
+
+            return {normalized, -normalized};
+        };
+
+        Constraint(std::vector<int> indices, float Distance, float Stiffness = 0.98f, bool Equality = true, int Cardinality = 2) {
+            indices = indices;
             distance = Distance;
             stiffness = Stiffness;
+            kPrime = 1.0f - Stiffness;
             equality = Equality;
+            cardinality = Cardinality;
         }
     };
 
