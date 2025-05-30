@@ -3,7 +3,7 @@
 #include <iostream>
 #include <cmath>
 
-const float physicsFPS = 240.0f;
+const float physicsFPS = 2.0f;
 const float PhysicsSystem::m_FIXED_DT = 1.0f / physicsFPS;
 const float PhysicsSystem::m_DAMPING_CONSTANT = 0.98f;
 const int PhysicsSystem::m_SOLVER_ITERATIONS = 10;
@@ -137,9 +137,25 @@ void PhysicsSystem::dampenVelocities() {
     }
 }
 
-void PhysicsSystem::generateCollisionConstraints(glm::vec3* position, glm::vec3* projection) {
-    if (projection->y < 0) { // Ground plane at y=0
-        projection->y = 0; // Simple position correction
+void PhysicsSystem::generateCollisionConstraints(Particle particle) {
+    if (particle.projection.y < 0) {
+        // Add ground constraint: C(p) = p.y ≥ 0
+        m_Constraints.push_back(PhysicsSystem::Constraint(
+            {particle.index},  // indices
+            1.0f,              // stiffness
+            false,             // inequality
+            1,                 // cardinality
+            [](auto particles) -> float {
+                return particles[0]->position.y;
+            },
+            [](auto particles) -> std::vector<glm::vec3> {
+                if (particles.size() != 1) {
+                    std::cerr << "Expected 1 particle in gradient, got " << particles.size() << "\n";
+                    return {glm::vec3(0,0,0)};
+                }
+                return std::vector<glm::vec3>{glm::vec3(0,1,0)};
+            }
+        ));
     }
     // TODO: Implement collision constraint generation
 }
@@ -196,7 +212,7 @@ void PhysicsSystem::move() {
 
     // (8)
     for (Particle &particle : m_PhysicsParticles) {
-        generateCollisionConstraints(&particle.position, &particle.projection);
+        generateCollisionConstraints(particle);
     }
 
     // (9) - (11)
