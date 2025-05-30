@@ -222,10 +222,26 @@ int main() {
         0.5f,  0.5f
     };
 
+    std::vector<unsigned int> faceIndices = {
+        // Back face
+        0, 1, 2, 2, 3, 0,
+        // Front face
+        4, 5, 6, 6, 7, 4,
+        // Left face
+        0, 3, 7, 7, 4, 0,
+        // Right face
+        1, 5, 6, 6, 2, 1,
+        // Bottom face
+        0, 4, 5, 5, 1, 0,
+        // Top face
+        3, 2, 6, 6, 7, 3
+    };
+
     // build and compile our shader program
     // ------------------------------------
     Shader lightingShader("../shaders/vertex.glsl", "../shaders/fragment.glsl");
     Shader lineShader("../shaders/line_vertex.glsl", "../shaders/line_fragment.glsl");
+    Shader cubeShader("../shaders/cube_vertex.glsl", "../shaders/cube_fragment.glsl");
 
     lightingShader.use();
 
@@ -258,16 +274,30 @@ int main() {
 
     // rendering cube
 
-    unsigned int cubeVAO, cubeVBO, cubeEBO;
+    unsigned int cubeVAO, cubelinesVAO, cubeVBO, cubelinesVBO, cubeEBO, cubelinesEBO;
     glGenVertexArrays(1, &cubeVAO);
+    glGenVertexArrays(1, &cubelinesVAO);
     glGenBuffers(1, &cubeVBO);
+    glGenBuffers(1, &cubelinesVBO);
     glGenBuffers(1, &cubeEBO);
+    glGenBuffers(1, &cubelinesEBO);
 
     glBindVertexArray(cubeVAO);
     glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
     glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubeEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faceIndices.size() * sizeof(unsigned int), faceIndices.data(), GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glBindVertexArray(0);
+
+    glBindVertexArray(cubelinesVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, cubelinesVBO);
+    glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubelinesEBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, edgeIndices.size() * sizeof(unsigned int), edgeIndices.data(), GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
@@ -321,7 +351,10 @@ int main() {
 
         // Update cube positions
         glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
+        glBufferSubData(GL_ARRAY_BUFFER, 0, 8 * sizeof(glm::vec3), positions.data());
+        glBindBuffer(GL_ARRAY_BUFFER, cubelinesVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, 8 * sizeof(glm::vec3), positions.data());
+
 
         // input
         // -----
@@ -336,17 +369,39 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // be sure to activate shader when setting uniforms/drawing objects
-        lightingShader.use();
-
-        lightingShader.setVec3("viewPos", camera.Position);
-        lightingShader.setFloat("time", static_cast<float>(glfwGetTime()));
-
         // view/projection transformations
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
+
+        // Draw cube
+
+        // Solid triangles
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        cubeShader.use();
+        cubeShader.setMat4("projection", projection);
+        cubeShader.setMat4("view", view);
+        glBindVertexArray(cubeVAO);
+        glDrawElements(GL_TRIANGLES, faceIndices.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+        glDisable(GL_BLEND);
+
+        // Lines
+        glLineWidth(4.0f); // Make lines thicker
+        lineShader.use();
+        lineShader.setMat4("projection", projection);
+        lineShader.setMat4("view", view);
+        glBindVertexArray(cubelinesVAO);
+        glDrawElements(GL_LINES, edgeIndices.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        // be sure to activate shader when setting uniforms/drawing objects
+        lightingShader.use();
+
+        lightingShader.setVec3("viewPos", camera.Position);
+        lightingShader.setFloat("time", static_cast<float>(glfwGetTime()));
 
         // Billboard-specific uniforms
         lightingShader.setVec3("cameraRight", camera.Right);
@@ -357,15 +412,6 @@ int main() {
         // Draw billboards
         glBindVertexArray(billboardVAO);
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, positions.size());
-
-        // Draw cube
-        glLineWidth(2.0f); // Make lines thicker
-        lineShader.use();
-        lineShader.setMat4("projection", projection);
-        lineShader.setMat4("view", view);
-        glBindVertexArray(cubeVAO);
-        glDrawElements(GL_LINES, edgeIndices.size(), GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
 
         // ImGui
         ImGui::Begin("Changer");
