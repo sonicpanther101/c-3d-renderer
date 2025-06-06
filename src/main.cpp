@@ -149,39 +149,95 @@ int main() {
     for (int i = 0; i < 24; i+=3) {
         vertecies.push_back(PhysicsSystem::Particle(vertecies.size(), glm::vec3(corners[i], corners[i+1]+1.5f, corners[i+2]), glm::vec3(0.0f)));
     }
-    // vertecies[0].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
+    vertecies[0].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
+
 
     for (int j = 0; j < 12; j++) {
-        edges.push_back(PhysicsSystem::Constraint(edgeConstraints[j], 1.0f));
+        edges.push_back(PhysicsSystem::Constraint(edgeConstraints[j]));
     }
     for (int j = 12; j < 18; j++) {
-        edges.push_back(PhysicsSystem::Constraint(edgeConstraints[j], 1.41421f));
-    }
-    for (int j = 0; j < 12; j++) {
-        edges.push_back(PhysicsSystem::Constraint({edgeConstraints[j][0]+8, edgeConstraints[j][1]+8}, 1.0f));
-    }
-    for (int j = 12; j < 18; j++) {
-        edges.push_back(PhysicsSystem::Constraint({edgeConstraints[j][0]+8, edgeConstraints[j][1]+8}, 1.41421f));
-    }
-
-    for (int i = 0; i < 16; i++) {
         edges.push_back(PhysicsSystem::Constraint(
-            {i},  // indices
-            1.0f,              // stiffness
-            false,             // inequality
-            1,                 // cardinality
-            [](auto particles) -> float {
-                return particles[0]->position.y;
-            },
-            [](auto particles) -> std::vector<glm::vec3> {
-                if (particles.size() != 1) {
-                    std::cerr << "Expected 1 particle in gradient, got " << particles.size() << "\n";
-                    return {glm::vec3(0,0,0)};
+            edgeConstraints[j], // indices
+            0.98f,              // stiffness
+            false,              // equality
+            [](std::vector<PhysicsSystem::Particle*> particles) -> float {
+                if (particles.size() != 2) {
+                    std::cout << "Constraint for that dimension is not supported yet" << std::endl;
+                    return 0.0f;
                 }
-                return std::vector<glm::vec3>{glm::vec3(0,1,0)};
+                glm::vec3 difference = particles[0]->position - particles[1]->position;
+                return glm::length(difference) - glm::sqrt(2);
+            },
+            [](std::vector<PhysicsSystem::Particle*> particles) -> std::vector<glm::vec3> {
+                if (particles.size() != 2) {
+                    std::cout << "Constraint for that dimension is not supported yet" << std::endl;
+                    return {glm::vec3(0.0f), glm::vec3(0.0f)};
+                }
+
+                glm::vec3 difference = particles[0]->position - particles[1]->position;
+                float length = glm::length(difference);
+
+                if (length < EPSILON) {
+                    return {glm::vec3(0.0f), glm::vec3(0.0f)};
+                }
+
+                glm::vec3 normalized = difference / length;
+                return {normalized, -normalized};
             }
         ));
     }
+    for (int j = 0; j < 12; j++) {
+        edges.push_back(PhysicsSystem::Constraint({edgeConstraints[j][0]+8, edgeConstraints[j][1]+8}));
+    }
+    for (int j = 12; j < 18; j++) {
+        edges.push_back(PhysicsSystem::Constraint(
+            {edgeConstraints[j][0]+8, edgeConstraints[j][1]+8}, // indices
+            0.98f,                                              // stiffness
+            false,                                              // equality
+            [](std::vector<PhysicsSystem::Particle*> particles) -> float {
+                if (particles.size() != 2) {
+                    std::cout << "Constraint for that dimension is not supported yet" << std::endl;
+                    return 0.0f;
+                }
+                glm::vec3 difference = particles[0]->position - particles[1]->position;
+                return glm::length(difference) - glm::sqrt(2);
+            },
+            [](std::vector<PhysicsSystem::Particle*> particles) -> std::vector<glm::vec3> {
+                if (particles.size() != 2) {
+                    std::cout << "Constraint for that dimension is not supported yet" << std::endl;
+                    return {glm::vec3(0.0f), glm::vec3(0.0f)};
+                }
+
+                glm::vec3 difference = particles[0]->position - particles[1]->position;
+                float length = glm::length(difference);
+
+                if (length < EPSILON) {
+                    return {glm::vec3(0.0f), glm::vec3(0.0f)};
+                }
+
+                glm::vec3 normalized = difference / length;
+                return {normalized, -normalized};
+            }
+        ));
+    }
+
+    // for (int i = 0; i < 16; i++) {
+    //     edges.push_back(PhysicsSystem::Constraint(
+    //         {i},  // indices
+    //         0.98f,              // stiffness
+    //         false,             // inequality
+    //         [](auto particles) -> float {
+    //             return particles[0]->position.y;
+    //         },
+    //         [](auto particles) -> std::vector<glm::vec3> {
+    //             if (particles.size() != 1) {
+    //                 std::cerr << "Expected 1 particle in gradient, got " << particles.size() << "\n";
+    //                 return {glm::vec3(0,0,0)};
+    //             }
+    //             return std::vector<glm::vec3>{glm::vec3(0,1,0)};
+    //         }
+    //     ));
+    // }
 
     // for rendering cube
     std::vector<unsigned int> edgeIndices;

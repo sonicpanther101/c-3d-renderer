@@ -75,17 +75,16 @@ public:
             std::vector<int> Indices, 
             float Stiffness = 0.98f, 
             bool Equality = true, 
-            int Cardinality = 2, 
             std::function<float(std::vector<Particle*>)> Function = defaultFunction,
             std::function<std::vector<glm::vec3>(std::vector<Particle*>)> Gradient = defaultGradient
         ) : 
             indices(Indices), 
             stiffness(Stiffness),
             equality(Equality), 
-            cardinality(Cardinality), 
             function(Function),
             gradient(Gradient)
         {
+            cardinality = Indices.size();
             kPrime = 1.0f - stiffness;
         }
     };
