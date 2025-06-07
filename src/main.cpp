@@ -57,50 +57,6 @@ glm::vec3 pointLightPositions[] = {
 	glm::vec3( 0.0f,  0.0f, -3.0f)
 };
 
-float vertices[] = {
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-};
-
 float corners[] = {
    -0.5f, -0.5f, -0.5f,
     0.5f, -0.5f, -0.5f,
@@ -140,16 +96,16 @@ std::vector<int> edgeConstraints[] = {
 
 int main() {
 
-    std::vector<PhysicsSystem::Particle> vertecies;
+    std::vector<PhysicsSystem::Particle> vertices;
     std::vector<PhysicsSystem::Constraint> edges;
 
     for (int i = 0; i < 24; i+=3) {
-        vertecies.push_back(PhysicsSystem::Particle(vertecies.size(), glm::vec3(corners[i], corners[i+1], corners[i+2]), glm::vec3(0.0f)));
+        vertices.push_back(PhysicsSystem::Particle(vertices.size(), glm::vec3(corners[i], corners[i+1], corners[i+2]), glm::vec3(0.0f)));
     }
     for (int i = 0; i < 24; i+=3) {
-        vertecies.push_back(PhysicsSystem::Particle(vertecies.size(), glm::vec3(corners[i], corners[i+1]+1.5f, corners[i+2]), glm::vec3(0.0f)));
+        vertices.push_back(PhysicsSystem::Particle(vertices.size(), glm::vec3(corners[i], corners[i+1]+1.5f, corners[i+2]), glm::vec3(0.0f)));
     }
-    vertecies[0].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
+    vertices[0].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
 
 
     for (int j = 0; j < 12; j++) {
@@ -250,7 +206,7 @@ int main() {
         edgeIndices.push_back(edgeConstraints[i][1]+8);
     }
     
-    PhysicsSystem system(vertecies, edges);
+    PhysicsSystem system(vertices, edges);
 
     // glfw: initialize and configure
     // ------------------------------
@@ -302,7 +258,7 @@ int main() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    unsigned int billboardVAO, billboardVBO, instanceVBO, radiiVBO;
+    unsigned int billboardVAO, billboardVBO, pointsVBO, radiiVBO;
     const float quadVertices[] = {
         // Positions
         -0.5f,  0.5f,
@@ -341,9 +297,17 @@ int main() {
 
     pointShader.setVec3("color", glm::vec3(1.0f, 0.0f, 0.0f));
 
+    cubeShader.use();
+    cubeShader.setVec3("lightPos", glm::vec3(5.0f, 5.0f, 5.0f));
+    cubeShader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+    cubeShader.setVec3("objectColor", glm::vec3(0.0f, 0.0f, 1.0f));
+    // world transformation
+    glm::mat4 model = glm::mat4(1.0f);
+    cubeShader.setMat4("model", model);
+
     glGenVertexArrays(1, &billboardVAO);
     glGenBuffers(1, &billboardVBO);
-    glGenBuffers(1, &instanceVBO);
+    glGenBuffers(1, &pointsVBO);
     glGenBuffers(1, &radiiVBO);
 
     glBindVertexArray(billboardVAO);
@@ -357,7 +321,7 @@ int main() {
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
 
     // Instance buffer
-    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, pointsVBO);
     glBufferData(GL_ARRAY_BUFFER, 100 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
 
     glEnableVertexAttribArray(1);
@@ -386,6 +350,8 @@ int main() {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glBindVertexArray(0);
+
+    // rendering cube lines
 
     glBindVertexArray(cubelinesVAO);
     glBindBuffer(GL_ARRAY_BUFFER, cubelinesVBO);
@@ -439,13 +405,15 @@ int main() {
         system.GetParticleSizes(sizes);
 
         // Update instance data
-        glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, pointsVBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Update cube positions
         glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
+
+        // Update cube line positions
         glBindBuffer(GL_ARRAY_BUFFER, cubelinesVBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
 
@@ -511,7 +479,7 @@ int main() {
         ImGui::Begin("Changer");
         ImGui::SliderFloat("Scale", &scale, 0.1f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
         ImGui::Checkbox("wireframe", &wireframe);
-        ImGui::Text("Vertecies: %llu", positions.size());
+        ImGui::Text("Vertices: %llu", positions.size());
         for (int i = 0; i < positions.size(); i++) {
             ImGui::Text("Position %d: (%.2f, %.2f, %.2f)", i, positions[i].x, positions[i].y, positions[i].z);
         }
