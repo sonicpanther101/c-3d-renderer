@@ -54,18 +54,22 @@ void PhysicsSystem::Step() {
 }
 
 void PhysicsSystem::GetParticlePositions(std::vector<glm::vec3>& positions) {
-    std::lock_guard<std::mutex> lock(m_SwapMutex);
     positions.clear();
-    for (const auto& particle : m_RenderParticles) {
-        positions.push_back(particle.position);
+    {
+        std::lock_guard<std::mutex> lock(m_SwapMutex);
+        for (const auto& particle : m_RenderParticles) {
+            positions.push_back(particle.position);
+        }
     }
 }
 
 void PhysicsSystem::GetParticleSizes(std::vector<float>& sizes) {
-    std::lock_guard<std::mutex> lock(m_SwapMutex);
     sizes.clear();
-    for (const auto& particle : m_RenderParticles) {
-        sizes.push_back(particle.radius);
+    {
+        std::lock_guard<std::mutex> lock(m_SwapMutex);
+        for (const auto& particle : m_RenderParticles) {
+            sizes.push_back(particle.radius);
+        }
     }
 }
 

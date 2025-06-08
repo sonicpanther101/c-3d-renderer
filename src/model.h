@@ -48,6 +48,7 @@ private:
         // read file via ASSIMP
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+        
         // check for errors
         if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) { // if is Not Zero
             cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << endl;
@@ -71,6 +72,7 @@ private:
         }
         // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
         for(unsigned int i = 0; i < node->mNumChildren; i++) {
+            // here lies the problem
             processNode(node->mChildren[i], scene);
         }
 

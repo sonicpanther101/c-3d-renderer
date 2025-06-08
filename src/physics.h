@@ -36,7 +36,7 @@ public:
     };
 
     struct Constraint {
-        std::vector<int> indices;
+        std::vector<unsigned int> indices;
         float stiffness;
         float kPrime;
         bool equality;
@@ -72,7 +72,7 @@ public:
         }
 
         Constraint(
-            std::vector<int> Indices, 
+            std::vector<unsigned int> Indices, 
             float Stiffness = 0.98f, 
             bool Equality = true, 
             std::function<float(std::vector<Particle*>)> Function = defaultFunction,

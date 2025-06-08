@@ -57,43 +57,6 @@ glm::vec3 pointLightPositions[] = {
 	glm::vec3( 0.0f,  0.0f, -3.0f)
 };
 
-float corners[] = {
-   -0.5f, -0.5f, -0.5f,
-    0.5f, -0.5f, -0.5f,
-    0.5f,  0.5f, -0.5f,
-   -0.5f,  0.5f, -0.5f,
-
-   -0.5f, -0.5f,  0.5f,
-    0.5f, -0.5f,  0.5f,
-    0.5f,  0.5f,  0.5f,
-   -0.5f,  0.5f,  0.5f
-};
-
-std::vector<int> edgeConstraints[] = {
-    // back
-    {0, 1},
-    {1, 2},
-    {2, 3},
-    {3, 0},
-    // front
-    {4, 5},
-    {5, 6},
-    {6, 7},
-    {7, 4},
-    // middle
-    {0, 4},
-    {1, 5},
-    {2, 6},
-    {3, 7},
-    // diagonals
-    {0, 2},
-    {0, 5},
-    {0, 7},
-    {1, 6},
-    {3, 6},
-    {4, 6}
-};
-
 struct Vertex1 {
     glm::vec3 position;
     glm::vec3 normal;
@@ -101,117 +64,88 @@ struct Vertex1 {
 
 int main() {
 
+    std::cout << "Hello, Physics!" << std::endl;
+
     std::vector<PhysicsSystem::Particle> vertices;
     std::vector<PhysicsSystem::Constraint> edges;
 
-    for (int i = 0; i < 24; i+=3) {
-        vertices.push_back(PhysicsSystem::Particle(vertices.size(), glm::vec3(corners[i], corners[i+1], corners[i+2]), glm::vec3(0.0f)));
+    // load models
+    // -----------
+    Model Bunny("../resources/objects/bunny.obj");
+
+    float modelScale = 10.0f;
+
+    for (int i = 0; i < Bunny.meshes.size(); i++) {
+        for (int j = 0; j < Bunny.meshes[i].vertices.size(); j++) {
+            Bunny.meshes[i].vertices[j].Position *= modelScale;
+        }
     }
-    for (int i = 0; i < 24; i+=3) {
-        vertices.push_back(PhysicsSystem::Particle(vertices.size(), glm::vec3(corners[i], corners[i+1]+1.5f, corners[i+2]), glm::vec3(0.0f)));
+
+    // convert to vertices
+    for (int i = 0; i < Bunny.meshes.size(); i++) {
+        for (int j = 0; j < Bunny.meshes[i].vertices.size(); j++) {
+            vertices.push_back(PhysicsSystem::Particle(
+                vertices.size(),  // Generate unique index
+                Bunny.meshes[i].vertices[j].Position,
+                glm::vec3(0.0f)
+            ));
+        }
     }
-    vertices[0].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
-    vertices[3+8].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
-    vertices[5].velocity = glm::vec3(0.0f, 0.0f, -10.0f);
-    vertices[5+8].velocity = glm::vec3(0.0f, 0.0f, -10.0f);
 
+    // convert to edges
+    for (int i = 0; i < Bunny.meshes.size(); i++) {
+        Mesh& mesh = Bunny.meshes[i];
+        for (int j = 0; j < mesh.indices.size(); j+=3) {
+            unsigned int idx[3] = {
+                mesh.indices[j],
+                mesh.indices[j+1],
+                mesh.indices[j+2]
+            };
+            for (int k = 0; k < 3; k++) {
+                // very clever ai indices
+                unsigned int p1 = idx[k];
+                unsigned int p2 = idx[(k+1)%3];
 
-    for (int j = 0; j < 12; j++) {
-        edges.push_back(PhysicsSystem::Constraint(edgeConstraints[j]));
-    }
-    for (int j = 12; j < 18; j++) {
-        edges.push_back(PhysicsSystem::Constraint(
-            edgeConstraints[j], // indices
-            0.98f,              // stiffness
-            false,              // equality
-            [](std::vector<PhysicsSystem::Particle*> particles) -> float {
-                if (particles.size() != 2) {
-                    std::cout << "Constraint for that dimension is not supported yet" << std::endl;
-                    return 0.0f;
-                }
-                glm::vec3 difference = particles[0]->position - particles[1]->position;
-                return glm::length(difference) - glm::sqrt(2);
-            },
-            [](std::vector<PhysicsSystem::Particle*> particles) -> std::vector<glm::vec3> {
-                if (particles.size() != 2) {
-                    std::cout << "Constraint for that dimension is not supported yet" << std::endl;
-                    return {glm::vec3(0.0f), glm::vec3(0.0f)};
-                }
+                glm::vec3 pos1 = mesh.vertices[p1].Position;
+                glm::vec3 pos2 = mesh.vertices[p2].Position;
+                float originalDistanceBetween = glm::length(pos1 - pos2);
 
-                glm::vec3 difference = particles[0]->position - particles[1]->position;
-                float length = glm::length(difference);
-
-                if (length < EPSILON) {
-                    return {glm::vec3(0.0f), glm::vec3(0.0f)};
-                }
-
-                glm::vec3 normalized = difference / length;
-                return {normalized, -normalized};
+                edges.push_back(PhysicsSystem::Constraint(
+                    {p1, p2}, 
+                    0.98f,              // stiffness
+                    true,              // equality
+                    [originalDistanceBetween](std::vector<PhysicsSystem::Particle*> particles) -> float {
+                        return glm::length(particles[0]->position - particles[1]->position) - originalDistanceBetween;
+                    },
+                    [](std::vector<PhysicsSystem::Particle*> particles) -> std::vector<glm::vec3> {
+                        glm::vec3 difference = particles[0]->position - particles[1]->position;
+                        float length = glm::length(difference);
+                        
+                        if (length < EPSILON) {
+                            return {glm::vec3(0.0f), glm::vec3(0.0f)};
+                        }
+                        
+                        glm::vec3 normalized = difference / length;
+                        return {normalized, -normalized};
+                    }
+                ));
             }
-        ));
+        }
     }
-    for (int j = 0; j < 12; j++) {
-        edges.push_back(PhysicsSystem::Constraint({edgeConstraints[j][0]+8, edgeConstraints[j][1]+8}));
+    
+    // other parts needed for rendering
+    unsigned int numVertices = vertices.size();
+    
+    std::vector<unsigned int> faceIndices;
+    for (int i = 0; i < Bunny.meshes.size(); i++) {
+        const auto& indices = Bunny.meshes[i].indices;
+        faceIndices.insert(faceIndices.end(), indices.begin(), indices.end());
     }
-    for (int j = 12; j < 18; j++) {
-        edges.push_back(PhysicsSystem::Constraint(
-            {edgeConstraints[j][0]+8, edgeConstraints[j][1]+8}, // indices
-            0.98f,                                              // stiffness
-            false,                                              // equality
-            [](std::vector<PhysicsSystem::Particle*> particles) -> float {
-                if (particles.size() != 2) {
-                    std::cout << "Constraint for that dimension is not supported yet" << std::endl;
-                    return 0.0f;
-                }
-                glm::vec3 difference = particles[0]->position - particles[1]->position;
-                return glm::length(difference) - glm::sqrt(2);
-            },
-            [](std::vector<PhysicsSystem::Particle*> particles) -> std::vector<glm::vec3> {
-                if (particles.size() != 2) {
-                    std::cout << "Constraint for that dimension is not supported yet" << std::endl;
-                    return {glm::vec3(0.0f), glm::vec3(0.0f)};
-                }
-
-                glm::vec3 difference = particles[0]->position - particles[1]->position;
-                float length = glm::length(difference);
-
-                if (length < EPSILON) {
-                    return {glm::vec3(0.0f), glm::vec3(0.0f)};
-                }
-
-                glm::vec3 normalized = difference / length;
-                return {normalized, -normalized};
-            }
-        ));
-    }
-
-    // for (int i = 0; i < 16; i++) {
-    //     edges.push_back(PhysicsSystem::Constraint(
-    //         {i},  // indices
-    //         0.98f,              // stiffness
-    //         false,             // inequality
-    //         [](auto particles) -> float {
-    //             return particles[0]->position.y;
-    //         },
-    //         [](auto particles) -> std::vector<glm::vec3> {
-    //             if (particles.size() != 1) {
-    //                 std::cerr << "Expected 1 particle in gradient, got " << particles.size() << "\n";
-    //                 return {glm::vec3(0,0,0)};
-    //             }
-    //             return std::vector<glm::vec3>{glm::vec3(0,1,0)};
-    //         }
-    //     ));
-    // }
-
-    // for rendering cube
+    
     std::vector<unsigned int> edgeIndices;
-    for (int i = 0; i < 18; i++) {
-        edgeIndices.push_back(edgeConstraints[i][0]);
-        edgeIndices.push_back(edgeConstraints[i][1]);
-    }
-    for (int i = 0; i < 18; i++) {
-        edgeIndices.push_back(edgeConstraints[i][0]+8);
-        edgeIndices.push_back(edgeConstraints[i][1]+8);
+    for (const auto& constraint : edges) {
+        edgeIndices.push_back(constraint.indices[0]);
+        edgeIndices.push_back(constraint.indices[1]);
     }
     
     PhysicsSystem system(vertices, edges);
@@ -277,24 +211,6 @@ int main() {
         0.5f,  0.5f
     };
 
-    std::vector<unsigned int> faceIndices = {
-        // Back face
-        0, 1, 2, 2, 3, 0,
-        // Front face
-        4, 5, 6, 6, 7, 4,
-        // Left face
-        0, 3, 7, 7, 4, 0,
-        // Right face
-        1, 5, 6, 6, 2, 1,
-        // Bottom face
-        0, 4, 5, 5, 1, 0,
-        // Top face
-        3, 2, 6, 6, 7, 3
-    };
-    for (int i = 0; i < 36; i++) {
-        faceIndices.push_back(faceIndices[i] + 8);
-    }
-
     // build and compile our shader program
     // ------------------------------------
     Shader pointShader("../shaders/point_vertex.glsl", "../shaders/point_fragment.glsl");
@@ -330,7 +246,7 @@ int main() {
 
     // Instance buffer
     glBindBuffer(GL_ARRAY_BUFFER, pointsVBO);
-    glBufferData(GL_ARRAY_BUFFER, 100 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, numVertices * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
 
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
@@ -350,7 +266,7 @@ int main() {
 
     glBindVertexArray(cubeVAO);
     glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-    glBufferData(GL_ARRAY_BUFFER, 2 * faceIndices.size() * sizeof(Vertex1), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, faceIndices.size() * sizeof(Vertex1), nullptr, GL_DYNAMIC_DRAW);
 
     // Position attribute
     glEnableVertexAttribArray(0);
@@ -407,7 +323,6 @@ int main() {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        // std::cout << 1/deltaTime << std::endl; // fps console log
 
         std::vector<glm::vec3> positions;
         system.GetParticlePositions(positions);
@@ -424,7 +339,7 @@ int main() {
 
         // Generate expanded vertices with normals
         std::vector<Vertex1> cubeVertices;
-        cubeVertices.reserve(72); // 72 vertices (36 per cube)
+        cubeVertices.reserve(faceIndices.size() * 3);
 
         for (int i = 0; i < faceIndices.size(); i += 3) {
             // Get triangle indices
@@ -479,15 +394,11 @@ int main() {
         // Draw cube
 
         // Solid triangles
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         cubeShader.use();
         cubeShader.setMat4("projection", projection);
         cubeShader.setMat4("view", view);
         glBindVertexArray(cubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, cubeVertices.size());
-        glBindVertexArray(0);
-        glDisable(GL_BLEND);
 
         // Lines
         glLineWidth(4.0f); // Make lines thicker
@@ -496,7 +407,6 @@ int main() {
         lineShader.setMat4("view", view);
         glBindVertexArray(cubelinesVAO);
         glDrawElements(GL_LINES, edgeIndices.size(), GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
 
         // be sure to activate shader when setting uniforms/drawing objects
         pointShader.use();
@@ -519,9 +429,7 @@ int main() {
         ImGui::SliderFloat("Scale", &scale, 0.1f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
         ImGui::Checkbox("wireframe", &wireframe);
         ImGui::Text("Vertices: %llu", positions.size());
-        for (int i = 0; i < positions.size(); i++) {
-            ImGui::Text("Position %d: (%.2f, %.2f, %.2f)", i, positions[i].x, positions[i].y, positions[i].z);
-        }
+        ImGui::Text("FPS: %.1f", 1.0f / deltaTime);
 		ImGui::End();
 
         ImGui::Render();
