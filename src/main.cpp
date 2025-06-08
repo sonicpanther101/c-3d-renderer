@@ -94,6 +94,11 @@ std::vector<int> edgeConstraints[] = {
     {4, 6}
 };
 
+struct Vertex1 {
+    glm::vec3 position;
+    glm::vec3 normal;
+};
+
 int main() {
 
     std::vector<PhysicsSystem::Particle> vertices;
@@ -106,6 +111,9 @@ int main() {
         vertices.push_back(PhysicsSystem::Particle(vertices.size(), glm::vec3(corners[i], corners[i+1]+1.5f, corners[i+2]), glm::vec3(0.0f)));
     }
     vertices[0].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
+    vertices[3+8].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
+    vertices[5].velocity = glm::vec3(0.0f, 0.0f, -10.0f);
+    vertices[5+8].velocity = glm::vec3(0.0f, 0.0f, -10.0f);
 
 
     for (int j = 0; j < 12; j++) {
@@ -342,13 +350,16 @@ int main() {
 
     glBindVertexArray(cubeVAO);
     glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-    glBufferData(GL_ARRAY_BUFFER, faceIndices.size() * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 2 * faceIndices.size() * sizeof(Vertex1), nullptr, GL_DYNAMIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubeEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faceIndices.size() * sizeof(unsigned int), faceIndices.data(), GL_STATIC_DRAW);
-
+    // Position attribute
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex1), (void*)0);
+
+    // Normal attribute
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex1), (void*)offsetof(Vertex1, normal));
+
     glBindVertexArray(0);
 
     // rendering cube lines
@@ -410,8 +421,36 @@ int main() {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Update cube positions
+
+        // Generate expanded vertices with normals
+        std::vector<Vertex1> cubeVertices;
+        cubeVertices.reserve(72); // 72 vertices (36 per cube)
+
+        for (int i = 0; i < faceIndices.size(); i += 3) {
+            // Get triangle indices
+            unsigned int idx0 = faceIndices[i];
+            unsigned int idx1 = faceIndices[i+1];
+            unsigned int idx2 = faceIndices[i+2];
+            
+            // Get positions
+            glm::vec3 v0 = positions[idx0];
+            glm::vec3 v1 = positions[idx1];
+            glm::vec3 v2 = positions[idx2];
+            
+            // Calculate face normal
+            glm::vec3 edge1 = v1 - v0;
+            glm::vec3 edge2 = v2 - v0;
+            glm::vec3 normal = glm::normalize(glm::cross(edge1, edge2));
+            
+            // Add vertices with normals
+            cubeVertices.push_back({v0, normal});
+            cubeVertices.push_back({v1, normal});
+            cubeVertices.push_back({v2, normal});
+        }
+
+        // Update VBO
         glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(glm::vec3), positions.data());
+        glBufferSubData(GL_ARRAY_BUFFER, 0, cubeVertices.size() * sizeof(Vertex1), cubeVertices.data());
 
         // Update cube line positions
         glBindBuffer(GL_ARRAY_BUFFER, cubelinesVBO);
@@ -446,7 +485,7 @@ int main() {
         cubeShader.setMat4("projection", projection);
         cubeShader.setMat4("view", view);
         glBindVertexArray(cubeVAO);
-        glDrawElements(GL_TRIANGLES, faceIndices.size(), GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_TRIANGLES, 0, cubeVertices.size());
         glBindVertexArray(0);
         glDisable(GL_BLEND);
 

@@ -79,8 +79,8 @@ void PhysicsSystem::RunSimulationLoop() {
 }
 
 glm::vec3 PhysicsSystem::externalForces(glm::vec3 *position) {
-    // return glm::vec3(0.0f, 0.0f, 0.0f);
-    return glm::vec3(0.0f, -9.81f, 0.0f);
+    return glm::vec3(0.0f, 0.0f, 0.0f);
+    // return glm::vec3(0.0f, -9.81f, 0.0f);
 }
 
 glm::mat3 PhysicsSystem::skewSymmetric(const glm::vec3& r) {
