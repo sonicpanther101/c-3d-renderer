@@ -9,6 +9,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 
+#include <cstdio>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -37,6 +38,8 @@ const unsigned int SCR_HEIGHT = 800;
 bool mouseEnabled = false;
 bool CPressed = false;
 bool wireframe = false;
+bool points = true;
+bool triangles = true;
 
 // camera
 Camera camera(glm::vec3(2.0f, 0.0f, 10.0f));
@@ -64,16 +67,51 @@ struct Vertex1 {
 
 int main() {
 
+    // glfw: initialize and configure
+    // ------------------------------
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    #ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    #endif
+
+    // glfw window creation
+    // --------------------
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    if (window == NULL) {
+        std::cout << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSwapInterval(0);
+
+    // tell GLFW to capture our mouse
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // glew: load all OpenGL function pointers
+    // ---------------------------------------
+    GLenum err = glewInit();
+	if (err != GLEW_OK) {
+		std::cout << "Failed to initialize GLEW: %s" << glewGetErrorString(err) << std::endl;
+        return -1;
+	}
+
     std::vector<PhysicsSystem::Particle> vertices;
     std::vector<PhysicsSystem::Constraint> edges;
 
     // load models
     // -----------
     // Model Bunny("D:/Programming/c-3d-renderer/resources/objects/bunny.obj");
-    Model Bunny("D:/Programming/c-3d-renderer/resources/objects/backpack/backpack.obj");
-    std::cout << "test" << std::endl;
+    Model Bunny("D:/Programming/c-3d-renderer/resources/objects/bunny.obj");
 
-    float modelScale = 10.0f;
+    float modelScale = 100.0f;
 
     for (int i = 0; i < Bunny.meshes.size(); i++) {
         for (int j = 0; j < Bunny.meshes[i].vertices.size(); j++) {
@@ -81,15 +119,27 @@ int main() {
         }
     }
 
+    // get number of vertices
+    int nvertices = 0;
+    for (int i = 0; i < Bunny.meshes.size(); i++) {
+        nvertices += Bunny.meshes[i].vertices.size();
+    }
+
+    float mass = 1.0f / nvertices;
+
     // convert to vertices
     for (int i = 0; i < Bunny.meshes.size(); i++) {
         for (int j = 0; j < Bunny.meshes[i].vertices.size(); j++) {
             vertices.push_back(PhysicsSystem::Particle(
                 vertices.size(),  // Generate unique index
                 Bunny.meshes[i].vertices[j].Position,
-                glm::vec3(0.0f)
+                glm::vec3(0.0f),
+                mass
             ));
         }
+    }
+    for (int i = 0; i < 5000; i++) {
+        vertices[i].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
     }
 
     // convert to edges
@@ -150,42 +200,6 @@ int main() {
     
     PhysicsSystem system(vertices, edges);
 
-    // glfw: initialize and configure
-    // ------------------------------
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    #ifdef __APPLE__
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    #endif
-
-    // glfw window creation
-    // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL) {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-    glfwSwapInterval(0);
-
-    // tell GLFW to capture our mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    // glew: load all OpenGL function pointers
-    // ---------------------------------------
-    GLenum err = glewInit();
-	if (err != GLEW_OK) {
-		std::cout << "Failed to initialize GLEW: %s" << glewGetErrorString(err) << std::endl;
-        return -1;
-	}
-
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
@@ -200,7 +214,7 @@ int main() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    unsigned int billboardVAO, billboardVBO, pointsVBO, radiiVBO;
+    unsigned int billboardVAO, billboardVBO, pointsVBO, indexVBO;
     const float quadVertices[] = {
         // Positions
         -0.5f,  0.5f,
@@ -232,7 +246,7 @@ int main() {
     glGenVertexArrays(1, &billboardVAO);
     glGenBuffers(1, &billboardVBO);
     glGenBuffers(1, &pointsVBO);
-    glGenBuffers(1, &radiiVBO);
+    glGenBuffers(1, &indexVBO);
 
     glBindVertexArray(billboardVAO);
 
@@ -251,6 +265,16 @@ int main() {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glVertexAttribDivisor(1, 1);  // Update once per instance
+
+    // Index buffer
+    glBindBuffer(GL_ARRAY_BUFFER, indexVBO);
+    unsigned int indices[numVertices];
+    for (unsigned int i = 0; i < numVertices; ++i)
+        indices[i] = i;
+    glBufferData(GL_ARRAY_BUFFER, numVertices * sizeof(unsigned int), indices, GL_DYNAMIC_DRAW);
+
+    glEnableVertexAttribArray(2);
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, sizeof(unsigned int), (void*)0);
 
     glBindVertexArray(0);
 
@@ -312,12 +336,6 @@ int main() {
     // -----------
 
     while (!glfwWindowShouldClose(window)) {
-
-        if (wireframe)
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        else 
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
         // per-frame time logic
         // --------------------
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -393,41 +411,49 @@ int main() {
 
         // Draw cube
 
-        // Solid triangles
-        cubeShader.use();
-        cubeShader.setMat4("projection", projection);
-        cubeShader.setMat4("view", view);
-        glBindVertexArray(cubeVAO);
-        glDrawArrays(GL_TRIANGLES, 0, cubeVertices.size());
+        if (triangles) {
+            // Solid triangles
+            cubeShader.use();
+            cubeShader.setMat4("projection", projection);
+            cubeShader.setMat4("view", view);
+            glBindVertexArray(cubeVAO);
+            glDrawArrays(GL_TRIANGLES, 0, cubeVertices.size());
+        }
 
-        // Lines
+        if (wireframe) {
+            // Lines
         glLineWidth(4.0f); // Make lines thicker
         lineShader.use();
         lineShader.setMat4("projection", projection);
         lineShader.setMat4("view", view);
         glBindVertexArray(cubelinesVAO);
         glDrawElements(GL_LINES, edgeIndices.size(), GL_UNSIGNED_INT, 0);
+        }
 
-        // be sure to activate shader when setting uniforms/drawing objects
-        pointShader.use();
+        if (points) {
+            // be sure to activate shader when setting uniforms/drawing objects
+            pointShader.use();
 
-        pointShader.setVec3("viewPos", camera.Position);
-        pointShader.setFloat("time", static_cast<float>(glfwGetTime()));
+            pointShader.setVec3("viewPos", camera.Position);
+            pointShader.setFloat("time", static_cast<float>(glfwGetTime()));
 
-        // Billboard-specific uniforms
-        pointShader.setVec3("cameraRight", camera.Right);
-        pointShader.setVec3("cameraUp", camera.Up);
-        pointShader.setFloat("billboardScale", scale);
-        // pointShader.setFloat("billboardScale", 696340e3f);
+            // Billboard-specific uniforms
+            pointShader.setVec3("cameraRight", camera.Right);
+            pointShader.setVec3("cameraUp", camera.Up);
+            pointShader.setFloat("billboardScale", scale);
+            // pointShader.setFloat("billboardScale", 696340e3f);
 
-        // Draw billboards
-        glBindVertexArray(billboardVAO);
-        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, positions.size());
+            // Draw billboards
+            glBindVertexArray(billboardVAO);
+            glDrawArraysInstanced(GL_TRIANGLES, 0, 6, positions.size());
+        }
 
         // ImGui
         ImGui::Begin("Changer");
         ImGui::SliderFloat("Scale", &scale, 0.1f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
         ImGui::Checkbox("wireframe", &wireframe);
+        ImGui::Checkbox("points", &points);
+        ImGui::Checkbox("triangles", &triangles);
         ImGui::Text("Vertices: %llu", positions.size());
         ImGui::Text("FPS: %.1f", 1.0f / deltaTime);
 		ImGui::End();

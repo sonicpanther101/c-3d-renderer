@@ -3,7 +3,7 @@
 #include <iostream>
 #include <cmath>
 
-const float physicsFPS = 240.0f;
+const float physicsFPS = 60.0f;
 const float PhysicsSystem::m_FIXED_DT = 1.0f / physicsFPS;
 const float PhysicsSystem::m_DAMPING_CONSTANT = 0.98f;
 const int PhysicsSystem::m_SOLVER_ITERATIONS = 10;
