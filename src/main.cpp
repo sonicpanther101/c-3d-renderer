@@ -64,14 +64,14 @@ struct Vertex1 {
 
 int main() {
 
-    std::cout << "Hello, Physics!" << std::endl;
-
     std::vector<PhysicsSystem::Particle> vertices;
     std::vector<PhysicsSystem::Constraint> edges;
 
     // load models
     // -----------
-    Model Bunny("../resources/objects/bunny.obj");
+    // Model Bunny("D:/Programming/c-3d-renderer/resources/objects/bunny.obj");
+    Model Bunny("D:/Programming/c-3d-renderer/resources/objects/backpack/backpack.obj");
+    std::cout << "test" << std::endl;
 
     float modelScale = 10.0f;
 
