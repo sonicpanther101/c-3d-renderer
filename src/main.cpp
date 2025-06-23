@@ -231,7 +231,7 @@ int main() {
 
                 edges.push_back(PhysicsSystem::Constraint(
                     {p1, p2}, 
-                    0.7f,              // stiffness
+                    0.98f,              // stiffness
                     true,              // equality
                     [originalDistanceBetween](std::vector<PhysicsSystem::Particle*> particles) -> float {
                         return glm::length(particles[0]->position - particles[1]->position) - originalDistanceBetween;
@@ -267,41 +267,64 @@ int main() {
         edgeIndices.push_back(constraint.indices[1]);
     }
 
-    // Volume constraints
-    std::vector<unsigned int> allIndices;
-    for (int i = 0; i < vertices.size(); i++) {
-        allIndices.push_back(i);
-    }
-    
-    edges.push_back(PhysicsSystem::Constraint(
-        allIndices,
-        0.9f,              // stiffness
-        true,               // equality
-        [Triangles](std::vector<PhysicsSystem::Particle*> particles) -> float {
-            float currentVolume = 0.0f;
-            for (const auto& tri : Triangles) {
-                glm::vec3 p0 = particles[tri[0]]->position;
-                glm::vec3 p1 = particles[tri[1]]->position;
-                glm::vec3 p2 = particles[tri[2]]->position;
-                currentVolume += glm::dot(p0, glm::cross(p1, p2));
-            }
-            currentVolume /= 6.0f;
-            return currentVolume - targetVolume.load();
-        },
-        [Triangles](std::vector<PhysicsSystem::Particle*> particles) -> std::vector<glm::vec3> {
-            std::vector<glm::vec3> gradients(particles.size(), glm::vec3(0.0f));
-            for (const auto& tri : Triangles) {
-                glm::vec3 p0 = particles[tri[0]]->position;
-                glm::vec3 p1 = particles[tri[1]]->position;
-                glm::vec3 p2 = particles[tri[2]]->position;
+    // Floor Constraints
+    for (const auto& vertex : vertices) {
+        edges.emplace_back(PhysicsSystem::Constraint(
+            {static_cast<unsigned int>(vertex.index)},
+            0.98,
+            false,
+            [](std::vector<PhysicsSystem::Particle*> particles) -> float {
+                return -particles[0]->position.y;
+            },
+            [](std::vector<PhysicsSystem::Particle*> particles) -> std::vector<glm::vec3> {
+                glm::vec3 difference = particles[0]->position - particles[1]->position;
+                float length = glm::length(difference);
                 
-                gradients[tri[0]] += (1.0f/6.0f) * glm::cross(p1, p2);
-                gradients[tri[1]] += (1.0f/6.0f) * glm::cross(p2, p0);
-                gradients[tri[2]] += (1.0f/6.0f) * glm::cross(p0, p1);
+                if (length < EPSILON) {
+                    return {glm::vec3(0.0f), glm::vec3(0.0f)};
+                }
+                
+                glm::vec3 normalized = difference / length;
+                return {normalized};
             }
-            return gradients;
-        }
-    ));
+        ));
+    }
+
+    // Volume constraints
+    // std::vector<unsigned int> allIndices;
+    // for (int i = 0; i < vertices.size(); i++) {
+    //     allIndices.push_back(i);
+    // }
+    
+    // edges.push_back(PhysicsSystem::Constraint(
+    //     allIndices,
+    //     0.9f,              // stiffness
+    //     true,               // equality
+    //     [Triangles](std::vector<PhysicsSystem::Particle*> particles) -> float {
+    //         float currentVolume = 0.0f;
+    //         for (const auto& tri : Triangles) {
+    //             glm::vec3 p0 = particles[tri[0]]->position;
+    //             glm::vec3 p1 = particles[tri[1]]->position;
+    //             glm::vec3 p2 = particles[tri[2]]->position;
+    //             currentVolume += glm::dot(p0, glm::cross(p1, p2));
+    //         }
+    //         currentVolume /= 6.0f;
+    //         return currentVolume - targetVolume.load();
+    //     },
+    //     [Triangles](std::vector<PhysicsSystem::Particle*> particles) -> std::vector<glm::vec3> {
+    //         std::vector<glm::vec3> gradients(particles.size(), glm::vec3(0.0f));
+    //         for (const auto& tri : Triangles) {
+    //             glm::vec3 p0 = particles[tri[0]]->position;
+    //             glm::vec3 p1 = particles[tri[1]]->position;
+    //             glm::vec3 p2 = particles[tri[2]]->position;
+                
+    //             gradients[tri[0]] += (1.0f/6.0f) * glm::cross(p1, p2);
+    //             gradients[tri[1]] += (1.0f/6.0f) * glm::cross(p2, p0);
+    //             gradients[tri[2]] += (1.0f/6.0f) * glm::cross(p0, p1);
+    //         }
+    //         return gradients;
+    //     }
+    // ));
     
     PhysicsSystem physicsSystem(vertices, edges);
 
