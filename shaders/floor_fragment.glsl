@@ -1,12 +1,12 @@
 #version 450 core
 out vec4 FragColor;
 
-in vec3 Normal;  
+in vec3 Normal;
 in vec3 FragPos;
 
-uniform vec3 lightPos; 
-uniform vec3 lightColor;
-uniform vec3 objectColor;
+uniform vec3 lightPos = vec3(5.0f, 5.0f, 5.0f); 
+uniform vec3 lightColor = vec3(1.0f, 1.0f, 1.0f);
+uniform vec3 objectColor = vec3(0.5f, 0.5f, 0.5f);
 
 void main() {
     // ambient

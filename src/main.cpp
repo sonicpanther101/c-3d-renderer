@@ -2,8 +2,6 @@
 #include <GLFW/glfw3.h>
 
 // GLM
-#include "../vendor/glm/glm/glm.hpp"
-#include "../vendor/glm/glm/gtc/matrix_transform.hpp"
 #include "../vendor/glm/glm/gtc/type_ptr.hpp"
 
 #include <assimp/Importer.hpp>
@@ -16,12 +14,12 @@
 
 #include "shader.h"
 #include "camera.h"
-#include "model.h"
 #include "physics.h"
+#include "model.h"
 
+#include <atomic>
 #include <iostream>
 #include <vector>
-#include <random>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -37,16 +35,17 @@ const unsigned int SCR_HEIGHT = 800;
 
 bool mouseEnabled = false;
 bool CPressed = false;
+bool EscPressed = false;
 bool wireframe = false;
-bool points = true;
+bool points = false;
 bool triangles = true;
+bool floorEnabled = true;
 
 // camera
-Camera camera(glm::vec3(2.0f, 0.0f, 10.0f));
+Camera camera(glm::vec3(0.0f, 5.0f, 15.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
-float scale = 0.2f;
 
 // timing
 float deltaTime = 0.0f;	
@@ -64,6 +63,55 @@ struct Vertex1 {
     glm::vec3 position;
     glm::vec3 normal;
 };
+
+// physics vertex dragging
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+
+// Global state for dragging
+bool isDragging = false;
+int selectedVertex = -1;
+glm::vec3 originalVertexPosition;
+glm::vec3 dragPlaneNormal;
+float savedInverseMass = 0.0f;
+
+glm::vec3 getRayFromMouse(double x, double y, const glm::mat4& projection, const glm::mat4& view) {
+    float ndcX = (2.0f * (float)x) / SCR_WIDTH - 1.0f;
+    float ndcY = 1.0f - (2.0f * (float)y) / SCR_HEIGHT;
+
+    glm::vec4 clipCoords(ndcX, ndcY, -1.0f, 1.0f);
+    glm::mat4 invProj = glm::inverse(projection);
+    glm::vec4 eyeCoords = invProj * clipCoords;
+    eyeCoords = glm::vec4(eyeCoords.x, eyeCoords.y, -1.0f, 0.0f);
+
+    glm::mat4 invView = glm::inverse(view);
+    glm::vec4 worldCoords = invView * eyeCoords;
+
+    return glm::normalize(glm::vec3(worldCoords));
+}
+
+int findClosestVertex(const std::vector<glm::vec3>& positions, const glm::vec3& rayOrigin, const glm::vec3& rayDir, float maxDistance) {
+    int closestVertex = -1;
+    float minDistance = maxDistance;
+    
+    for (int i = 0; i < positions.size(); i++) {
+        glm::vec3 diff = positions[i] - rayOrigin;
+        float t = glm::dot(diff, rayDir);
+        
+        if (t < 0) continue;
+        
+        glm::vec3 projection = rayOrigin + t * rayDir;
+        float distance = glm::distance(positions[i], projection);
+        
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestVertex = i;
+        }
+    }
+    return closestVertex;
+}
+
+static std::atomic<float> targetVolume(0.0f);
+
 
 int main() {
 
@@ -89,6 +137,7 @@ int main() {
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSwapInterval(0);
 
@@ -108,10 +157,30 @@ int main() {
 
     // load models
     // -----------
-    // Model Bunny("D:/Programming/c-3d-renderer/resources/objects/bunny.obj");
-    Model Bunny("D:/Programming/c-3d-renderer/resources/objects/bunny.obj");
+    Model Bunny("../resources/objects/bunny.obj");
 
-    float modelScale = 100.0f;
+    float modelScale = 50.0f;
+
+    // Calculate volume of mesh
+    float initialVolume = 0.0f;
+    std::vector<std::vector<unsigned int>> Triangles;
+    for (int i = 0; i < Bunny.meshes.size(); i++) {
+        Mesh& mesh = Bunny.meshes[i];
+        for (int j = 0; j < mesh.indices.size(); j += 3) {
+            unsigned int idx0 = mesh.indices[j];
+            unsigned int idx1 = mesh.indices[j+1];
+            unsigned int idx2 = mesh.indices[j+2];
+            
+            glm::vec3 v0 = mesh.vertices[idx0].Position * modelScale;
+            glm::vec3 v1 = mesh.vertices[idx1].Position * modelScale;
+            glm::vec3 v2 = mesh.vertices[idx2].Position * modelScale;
+            
+            initialVolume += glm::dot(v0, glm::cross(v1, v2));
+            Triangles.push_back({idx0, idx1, idx2});
+        }
+    }
+    initialVolume /= 6.0f;
+    targetVolume.store(initialVolume);
 
     for (int i = 0; i < Bunny.meshes.size(); i++) {
         for (int j = 0; j < Bunny.meshes[i].vertices.size(); j++) {
@@ -138,8 +207,8 @@ int main() {
             ));
         }
     }
-    for (int i = 0; i < 5000; i++) {
-        vertices[i].velocity = glm::vec3(0.0f, 0.0f, 10.0f);
+    for (int i = 0; i < vertices.size(); i++) {
+        vertices[i].velocity = glm::vec3(0.0f, 0.0f, 50.0f);
     }
 
     // convert to edges
@@ -162,7 +231,7 @@ int main() {
 
                 edges.push_back(PhysicsSystem::Constraint(
                     {p1, p2}, 
-                    0.98f,              // stiffness
+                    0.7f,              // stiffness
                     true,              // equality
                     [originalDistanceBetween](std::vector<PhysicsSystem::Particle*> particles) -> float {
                         return glm::length(particles[0]->position - particles[1]->position) - originalDistanceBetween;
@@ -197,19 +266,57 @@ int main() {
         edgeIndices.push_back(constraint.indices[0]);
         edgeIndices.push_back(constraint.indices[1]);
     }
+
+    // Volume constraints
+    std::vector<unsigned int> allIndices;
+    for (int i = 0; i < vertices.size(); i++) {
+        allIndices.push_back(i);
+    }
     
-    PhysicsSystem system(vertices, edges);
+    edges.push_back(PhysicsSystem::Constraint(
+        allIndices,
+        0.9f,              // stiffness
+        true,               // equality
+        [Triangles](std::vector<PhysicsSystem::Particle*> particles) -> float {
+            float currentVolume = 0.0f;
+            for (const auto& tri : Triangles) {
+                glm::vec3 p0 = particles[tri[0]]->position;
+                glm::vec3 p1 = particles[tri[1]]->position;
+                glm::vec3 p2 = particles[tri[2]]->position;
+                currentVolume += glm::dot(p0, glm::cross(p1, p2));
+            }
+            currentVolume /= 6.0f;
+            return currentVolume - targetVolume.load();
+        },
+        [Triangles](std::vector<PhysicsSystem::Particle*> particles) -> std::vector<glm::vec3> {
+            std::vector<glm::vec3> gradients(particles.size(), glm::vec3(0.0f));
+            for (const auto& tri : Triangles) {
+                glm::vec3 p0 = particles[tri[0]]->position;
+                glm::vec3 p1 = particles[tri[1]]->position;
+                glm::vec3 p2 = particles[tri[2]]->position;
+                
+                gradients[tri[0]] += (1.0f/6.0f) * glm::cross(p1, p2);
+                gradients[tri[1]] += (1.0f/6.0f) * glm::cross(p2, p0);
+                gradients[tri[2]] += (1.0f/6.0f) * glm::cross(p0, p1);
+            }
+            return gradients;
+        }
+    ));
+    
+    PhysicsSystem physicsSystem(vertices, edges);
 
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
 
     // render 1 frame to stop flashbang startup
-    processInput(window, system);
+    processInput(window, physicsSystem);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glfwSwapBuffers(window);
     glfwPollEvents();
+
+    glfwSetWindowUserPointer(window, &physicsSystem);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -230,6 +337,7 @@ int main() {
     Shader pointShader("../shaders/point_vertex.glsl", "../shaders/point_fragment.glsl");
     Shader lineShader("../shaders/line_vertex.glsl", "../shaders/line_fragment.glsl");
     Shader cubeShader("../shaders/cube_vertex.glsl", "../shaders/cube_fragment.glsl");
+    Shader floorShader("../shaders/floor_vertex.glsl", "../shaders/floor_vertex.glsl");
 
     pointShader.use();
 
@@ -239,9 +347,13 @@ int main() {
     cubeShader.setVec3("lightPos", glm::vec3(5.0f, 5.0f, 5.0f));
     cubeShader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
     cubeShader.setVec3("objectColor", glm::vec3(0.0f, 0.0f, 1.0f));
+
+    floorShader.use();
+
     // world transformation
     glm::mat4 model = glm::mat4(1.0f);
     cubeShader.setMat4("model", model);
+    floorShader.setMat4("model", model);
 
     glGenVertexArrays(1, &billboardVAO);
     glGenBuffers(1, &billboardVBO);
@@ -266,15 +378,44 @@ int main() {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glVertexAttribDivisor(1, 1);  // Update once per instance
 
-    // Index buffer
-    glBindBuffer(GL_ARRAY_BUFFER, indexVBO);
-    unsigned int indices[numVertices];
-    for (unsigned int i = 0; i < numVertices; ++i)
-        indices[i] = i;
-    glBufferData(GL_ARRAY_BUFFER, numVertices * sizeof(unsigned int), indices, GL_DYNAMIC_DRAW);
+    glBindVertexArray(0);
 
-    glEnableVertexAttribArray(2);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, sizeof(unsigned int), (void*)0);
+    // rendering floor
+    std::vector<glm::vec3> floor = {
+        glm::vec3(-0.5f, 0.0f, -0.5f),
+        glm::vec3( 0.0f, 1.0f,  0.0f),
+        glm::vec3( 0.5f, 0.0f, -0.5f),
+        glm::vec3( 0.0f, 1.0f,  0.0f),
+        glm::vec3(-0.5f, 0.0f,  0.5f),
+        glm::vec3( 0.0f, 1.0f,  0.0f),
+
+        glm::vec3( 0.5f, 0.0f, -0.5f),
+        glm::vec3( 0.0f, 1.0f,  0.0f),
+        glm::vec3(-0.5f, 0.0f,  0.5f),
+        glm::vec3( 0.0f, 1.0f,  0.0f),
+        glm::vec3( 0.5f, 0.0f,  0.5f),
+        glm::vec3( 0.0f, 1.0f,  0.0f)
+    };
+
+    float floorScale = 20.0f;
+    for (int i = 0; i < floor.size(); i+=2)
+        floor[i] *= floorScale;
+
+    unsigned int floorVAO, floorVBO;
+    glGenVertexArrays(1, &floorVAO);
+    glGenBuffers(1, &floorVBO);
+
+    glBindVertexArray(floorVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, floorVBO);
+    glBufferData(GL_ARRAY_BUFFER, floor.size() * sizeof(glm::vec3), floor.data(), GL_DYNAMIC_DRAW);
+
+    // Position attribute
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 2*sizeof(glm::vec3), (void*)0);
+
+    // Normal attribute
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 2*sizeof(glm::vec3), (void*)sizeof(glm::vec3));
 
     glBindVertexArray(0);
 
@@ -328,9 +469,9 @@ int main() {
 
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 330");
+    ImGui_ImplOpenGL3_Init("#version 450 core");
 
-	system.Start();
+	physicsSystem.Start();
 	
     // render loop
     // -----------
@@ -343,10 +484,10 @@ int main() {
         lastFrame = currentFrame;
 
         std::vector<glm::vec3> positions;
-        system.GetParticlePositions(positions);
+        physicsSystem.GetParticlePositions(positions);
 
         std::vector<float> sizes;
-        system.GetParticleSizes(sizes);
+        physicsSystem.GetParticleSizes(sizes);
 
         // Update instance data
         glBindBuffer(GL_ARRAY_BUFFER, pointsVBO);
@@ -392,7 +533,7 @@ int main() {
 
         // input
         // -----
-        processInput(window, system);
+        processInput(window, physicsSystem);
 
         // render
         // ------
@@ -409,8 +550,6 @@ int main() {
         pointShader.setMat4("projection", projection);
         pointShader.setMat4("view", view);
 
-        // Draw cube
-
         if (triangles) {
             // Solid triangles
             cubeShader.use();
@@ -422,12 +561,12 @@ int main() {
 
         if (wireframe) {
             // Lines
-        glLineWidth(4.0f); // Make lines thicker
-        lineShader.use();
-        lineShader.setMat4("projection", projection);
-        lineShader.setMat4("view", view);
-        glBindVertexArray(cubelinesVAO);
-        glDrawElements(GL_LINES, edgeIndices.size(), GL_UNSIGNED_INT, 0);
+            glLineWidth(4.0f); // Make lines thicker
+            lineShader.use();
+            lineShader.setMat4("projection", projection);
+            lineShader.setMat4("view", view);
+            glBindVertexArray(cubelinesVAO);
+            glDrawElements(GL_LINES, edgeIndices.size(), GL_UNSIGNED_INT, 0);
         }
 
         if (points) {
@@ -440,22 +579,36 @@ int main() {
             // Billboard-specific uniforms
             pointShader.setVec3("cameraRight", camera.Right);
             pointShader.setVec3("cameraUp", camera.Up);
-            pointShader.setFloat("billboardScale", scale);
-            // pointShader.setFloat("billboardScale", 696340e3f);
 
             // Draw billboards
             glBindVertexArray(billboardVAO);
             glDrawArraysInstanced(GL_TRIANGLES, 0, 6, positions.size());
         }
 
+        if (floorEnabled) {
+            floorShader.use();
+            floorShader.setMat4("projection", projection);
+            floorShader.setMat4("view", view);
+
+            glBindVertexArray(floorVAO);
+            glDrawArraysInstanced(GL_TRIANGLES, 0, 6, floor.size()/2);
+        }
+
         // ImGui
         ImGui::Begin("Changer");
-        ImGui::SliderFloat("Scale", &scale, 0.1f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
         ImGui::Checkbox("wireframe", &wireframe);
         ImGui::Checkbox("points", &points);
         ImGui::Checkbox("triangles", &triangles);
+        ImGui::Checkbox("floor", &floorEnabled);
         ImGui::Text("Vertices: %llu", positions.size());
         ImGui::Text("FPS: %.1f", 1.0f / deltaTime);
+
+        // Volume control slider
+        float vol = targetVolume.load();
+        if (ImGui::SliderFloat("Target Volume", &vol, 0.0f, initialVolume*10.0f)) {
+            targetVolume.store(vol);
+        }
+
 		ImGui::End();
 
         ImGui::Render();
@@ -486,14 +639,14 @@ int main() {
     glDeleteBuffers(1, &cubeEBO);
 
     glfwTerminate();
-    system.Stop();
+    physicsSystem.Stop();
     return 0;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window, PhysicsSystem &system) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+void processInput(GLFWwindow *window, PhysicsSystem &physicsSystem) {
+    if (glfwGetKey(window, GLFW_KEY_BACKSPACE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.ProcessKeyboard(FORWARD, deltaTime);
@@ -507,20 +660,29 @@ void processInput(GLFWwindow *window, PhysicsSystem &system) {
         camera.ProcessKeyboard(UP, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         camera.ProcessKeyboard(DOWN, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        if (!EscPressed) {
+            firstMouse = true;
+            mouseEnabled = !mouseEnabled;
+            glfwSetInputMode(window, GLFW_CURSOR, (mouseEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
+        }
+        if (!mouseEnabled) {
+            physicsSystem.Play();
+        } else {
+            physicsSystem.Pause();
+        }
+        EscPressed = true;
+    }
     if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
         if (!CPressed) {
             firstMouse = true;
             mouseEnabled = !mouseEnabled;
             glfwSetInputMode(window, GLFW_CURSOR, (mouseEnabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED));
         }
-        if (!mouseEnabled) {
-            system.Play();
-        } else {
-            system.Pause();
-        }
         CPressed = true;
     } else {
         CPressed = false;
+        EscPressed = false;
     }
 }
 
@@ -536,25 +698,111 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 // glfw: whenever the mouse moves, this callback is called
 // -------------------------------------------------------
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
-    if (mouseEnabled) {
-        return;
+
+    PhysicsSystem* physicsSystemPtr = static_cast<PhysicsSystem*>(glfwGetWindowUserPointer(window));
+    if (!physicsSystemPtr) return;
+    PhysicsSystem& physicsSystem = *physicsSystemPtr;
+
+    if (isDragging) {
+        double x = xposIn;
+        double y = yposIn;
+        
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 
+            (float)SCR_WIDTH/(float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = camera.GetViewMatrix();
+        glm::vec3 rayDir = getRayFromMouse(x, y, projection, view);
+
+        float denom = glm::dot(rayDir, dragPlaneNormal);
+        if (fabs(denom) > 1e-6) {
+            float t = glm::dot(originalVertexPosition - camera.Position, dragPlaneNormal) / denom;
+            if (t > 0) {
+                glm::vec3 newPosition = camera.Position + t * rayDir;
+
+                std::lock_guard<std::mutex> lock(physicsSystem.m_SwapMutex);
+                PhysicsSystem::Particle& p = physicsSystem.m_PhysicsParticles[selectedVertex];
+                PhysicsSystem::Particle& r = physicsSystem.m_RenderParticles[selectedVertex];
+                
+                p.position = newPosition;
+                r.position = newPosition;
+                p.projection = newPosition;
+                r.projection = newPosition;
+                p.velocity = glm::vec3(0.0f);
+                r.velocity = glm::vec3(0.0f);
+            }
+        }
     } else {
-        float xpos = static_cast<float>(xposIn);
-        float ypos = static_cast<float>(yposIn);
-    
-        if (firstMouse) {
+        if (mouseEnabled) {
+            return;
+        } else {
+            float xpos = static_cast<float>(xposIn);
+            float ypos = static_cast<float>(yposIn);
+        
+            if (firstMouse) {
+                lastX = xpos;
+                lastY = ypos;
+                firstMouse = false;
+            }
+        
+            float xoffset = xpos - lastX;
+            float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+        
             lastX = xpos;
             lastY = ypos;
-            firstMouse = false;
+        
+            camera.ProcessMouseMovement(xoffset, yoffset);
         }
-    
-        float xoffset = xpos - lastX;
-        float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-    
-        lastX = xpos;
-        lastY = ypos;
-    
-        camera.ProcessMouseMovement(xoffset, yoffset);
+    }
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+
+    PhysicsSystem* physicsSystemPtr = static_cast<PhysicsSystem*>(glfwGetWindowUserPointer(window));
+    if (!physicsSystemPtr) return;
+    PhysicsSystem& physicsSystem = *physicsSystemPtr;
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        double x, y;
+        glfwGetCursorPos(window, &x, &y);
+        
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), 
+            (float)SCR_WIDTH/(float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = camera.GetViewMatrix();
+        glm::vec3 rayDir = getRayFromMouse(x, y, projection, view);
+        
+        std::vector<glm::vec3> positions;
+        physicsSystem.GetParticlePositions(positions);
+        
+        selectedVertex = findClosestVertex(positions, camera.Position, rayDir, 0.5f);
+        
+        if (selectedVertex != -1) {
+            isDragging = true;
+            originalVertexPosition = positions[selectedVertex];
+            dragPlaneNormal = camera.Up;
+            
+            std::lock_guard<std::mutex> lock(physicsSystem.m_SwapMutex);
+            PhysicsSystem::Particle& p = physicsSystem.m_PhysicsParticles[selectedVertex];
+            PhysicsSystem::Particle& r = physicsSystem.m_RenderParticles[selectedVertex];
+            
+            savedInverseMass = p.inverseMass;
+            p.inverseMass = 0.0f;
+            r.inverseMass = 0.0f;
+            p.velocity = glm::vec3(0.0f);
+            r.velocity = glm::vec3(0.0f);
+        }
+    } else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+        if (isDragging) {
+            std::lock_guard<std::mutex> lock(physicsSystem.m_SwapMutex);
+            PhysicsSystem::Particle& p = physicsSystem.m_PhysicsParticles[selectedVertex];
+            PhysicsSystem::Particle& r = physicsSystem.m_RenderParticles[selectedVertex];
+            
+            p.inverseMass = savedInverseMass;
+            r.inverseMass = savedInverseMass;
+            p.velocity = glm::vec3(0.0f);
+            r.velocity = glm::vec3(0.0f);
+            
+            isDragging = false;
+            selectedVertex = -1;
+        }
     }
 }
 

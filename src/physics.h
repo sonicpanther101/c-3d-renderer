@@ -89,6 +89,10 @@ public:
         }
     };
 
+    std::mutex m_SwapMutex;
+    std::vector<Particle> m_RenderParticles;
+    std::vector<Particle> m_PhysicsParticles;
+
     PhysicsSystem(std::vector<Particle> &particles, std::vector<Constraint> &constraints);
     ~PhysicsSystem();
     
@@ -103,13 +107,10 @@ public:
 private:
     std::chrono::high_resolution_clock::time_point m_LastTime;
     float m_dT;
-    std::vector<Particle> m_PhysicsParticles;
-    std::vector<Particle> m_RenderParticles;
     std::vector<Constraint> m_Constraints;
     std::atomic<bool> m_Running{false};
     std::atomic<bool> m_Paused{false};
     std::thread m_SimulationThread;
-    std::mutex m_SwapMutex;
     
     static const float m_FIXED_DT;
     static const float m_DAMPING_CONSTANT;
